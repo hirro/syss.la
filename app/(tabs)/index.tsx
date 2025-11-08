@@ -85,6 +85,36 @@ export default function TodosScreen() {
     setShowDetailModal(true);
   };
 
+  const handleUpdateTodoField = async (field: 'title' | 'description', value: string) => {
+    if (!selectedTodo || selectedTodo.source !== 'personal') return;
+    
+    if (field === 'title' && !value.trim()) {
+      alert('Title cannot be empty');
+      return;
+    }
+
+    try {
+      const updatedTodo: Todo = {
+        ...selectedTodo,
+        [field]: value.trim() || (field === 'description' ? undefined : value),
+        updatedAt: new Date().toISOString(),
+      };
+
+      await editTodo(updatedTodo);
+      setSelectedTodo(updatedTodo);
+      
+      // Sync to GitHub if authenticated
+      if (isAuthenticated) {
+        await fullSync();
+      }
+      
+      console.log(`✅ Todo ${field} updated successfully`);
+    } catch (error) {
+      console.error(`❌ Failed to update todo ${field}:`, error);
+      alert(`Failed to update ${field}`);
+    }
+  };
+
   const handleCompletePress = (id: string, title: string) => {
     Alert.alert(
       'Complete Todo?',
@@ -383,17 +413,36 @@ export default function TodosScreen() {
                   activeOpacity={0.7}>
                   <View style={styles.checkboxCircle} />
                 </TouchableOpacity>
-                <ThemedText type="title" style={styles.detailTitle}>
-                  {selectedTodo.title}
-                </ThemedText>
+                
+                {selectedTodo.source === 'personal' ? (
+                  <TextInput
+                    style={[styles.input, styles.editTitleInput]}
+                    value={selectedTodo.title}
+                    onChangeText={(text) => handleUpdateTodoField('title', text)}
+                    placeholder="Title"
+                  />
+                ) : (
+                  <ThemedText type="title" style={styles.detailTitle}>
+                    {selectedTodo.title}
+                  </ThemedText>
+                )}
               </View>
 
-              {selectedTodo.description && (
-                <View style={styles.detailSection}>
-                  <ThemedText style={styles.detailSectionTitle}>Description</ThemedText>
-                  <ThemedText>{selectedTodo.description}</ThemedText>
-                </View>
-              )}
+              <View style={styles.detailSection}>
+                <ThemedText style={styles.detailSectionTitle}>Description</ThemedText>
+                {selectedTodo.source === 'personal' ? (
+                  <TextInput
+                    style={[styles.input, styles.textArea]}
+                    value={selectedTodo.description || ''}
+                    onChangeText={(text) => handleUpdateTodoField('description', text)}
+                    placeholder="Add description..."
+                    multiline
+                    numberOfLines={4}
+                  />
+                ) : (
+                  <ThemedText>{selectedTodo.description || 'No description'}</ThemedText>
+                )}
+              </View>
 
               <View style={styles.detailSection}>
                 <ThemedText style={styles.detailSectionTitle}>Source</ThemedText>
@@ -918,5 +967,11 @@ const styles = StyleSheet.create({
   completedText: {
     textDecorationLine: 'line-through',
     opacity: 0.6,
+  },
+  editTitleInput: {
+    flex: 1,
+    marginLeft: 12,
+    fontSize: 24,
+    fontWeight: 'bold',
   },
 });
