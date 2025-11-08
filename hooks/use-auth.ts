@@ -6,13 +6,17 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const state = getAuthState();
-    setIsAuthenticated(state.isAuthenticated);
-    setLoading(false);
+    const loadAuthState = async () => {
+      const state = await getAuthState();
+      setIsAuthenticated(state.isAuthenticated);
+      setLoading(false);
+    };
+    
+    loadAuthState();
   }, []);
 
   const login = async (token: string) => {
-    setPersonalAccessToken(token);
+    await setPersonalAccessToken(token);
     setIsAuthenticated(true);
   };
 

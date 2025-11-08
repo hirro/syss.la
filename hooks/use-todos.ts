@@ -69,13 +69,18 @@ export function useTodos() {
   const completeTodo = useCallback(
     async (id: string) => {
       try {
+        console.log('📝 Completing todo in database:', id);
         const todo = todos.find((t) => t.id === id);
         if (todo) {
-          await updateTodo({
+          const completedTodo = {
             ...todo,
             completedAt: new Date().toISOString(),
-          });
+            updatedAt: new Date().toISOString(),
+          };
+          console.log('💾 Updating todo with completedAt:', completedTodo.completedAt);
+          await updateTodo(completedTodo);
           await loadTodos();
+          console.log('✅ Todo completed in database');
         }
       } catch (err) {
         console.error('Failed to complete todo:', err);

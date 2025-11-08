@@ -3,15 +3,32 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useAuth } from '@/hooks/use-auth';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getCurrentUser } from '@/services/github/api-client';
+import { getSyncConfig, setSyncConfig } from '@/services/sync-service';
 
 export default function SettingsScreen() {
   const { isAuthenticated, login, logout } = useAuth();
   const [token, setToken] = useState('');
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
+  const [syncOwner, setSyncOwner] = useState('');
+  const [syncRepo, setSyncRepo] = useState('');
+  const [syncBranch, setSyncBranch] = useState('main');
   const insets = useSafeAreaInsets();
+
+  useEffect(() => {
+    loadSyncConfig();
+  }, []);
+
+  const loadSyncConfig = async () => {
+    const config = await getSyncConfig();
+    if (config) {
+      setSyncOwner(config.owner);
+      setSyncRepo(config.repo);
+      setSyncBranch(config.branch || 'main');
+    }
+  };
 
   const handleLogin = async () => {
     if (!token.trim()) {
@@ -37,6 +54,24 @@ export default function SettingsScreen() {
   const handleLogout = async () => {
     await logout();
     setUsername('');
+  };
+
+  const handleSaveSyncConfig = async () => {
+    if (!syncOwner.trim() || !syncRepo.trim()) {
+      alert('Please enter GitHub owner and repository name');
+      return;
+    }
+
+    try {
+      await setSyncConfig({
+        owner: syncOwner.trim(),
+        repo: syncRepo.trim(),
+        branch: syncBranch.trim() || 'main',
+      });
+      alert('Sync configuration saved!');
+    } catch {
+      alert('Failed to save sync configuration');
+    }
   };
 
   return (
@@ -86,6 +121,44 @@ export default function SettingsScreen() {
               </TouchableOpacity>
             </View>
           )}
+        </View>
+
+        <View style={styles.section}>
+          <ThemedText type="subtitle">GitHub Storage</ThemedText>
+          <ThemedText style={styles.instructions}>
+            Configure where your todos will be stored in GitHub
+          </ThemedText>
+
+          <TextInput
+            style={styles.input}
+            placeholder="GitHub Username/Org"
+            value={syncOwner}
+            onChangeText={setSyncOwner}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+
+          <TextInput
+            style={styles.input}
+            placeholder="Repository Name"
+            value={syncRepo}
+            onChangeText={setSyncRepo}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+
+          <TextInput
+            style={styles.input}
+            placeholder="Branch (default: main)"
+            value={syncBranch}
+            onChangeText={setSyncBranch}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+
+          <TouchableOpacity style={styles.button} onPress={handleSaveSyncConfig}>
+            <ThemedText type="link">Save Configuration</ThemedText>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.section}>

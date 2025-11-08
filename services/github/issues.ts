@@ -3,7 +3,7 @@ import { getOctokit } from './api-client';
 import { insertTodo, updateTodo, getTodoById } from '@/lib/db/todos';
 
 export async function fetchUserIssues(): Promise<Todo[]> {
-  const octokit = getOctokit();
+  const octokit = await getOctokit();
   
   const { data: issues } = await octokit.issues.listForAuthenticatedUser({
     filter: 'assigned',
@@ -41,21 +41,30 @@ export async function fetchUserIssues(): Promise<Todo[]> {
 }
 
 export async function syncGitHubIssues(): Promise<void> {
+  console.log('📥 Syncing GitHub issues...');
   const issues = await fetchUserIssues();
+  console.log(`✅ Found ${issues.length} assigned GitHub issues`);
+
+  let updated = 0;
+  let inserted = 0;
 
   for (const issue of issues) {
     const existing = await getTodoById(issue.id);
     
     if (existing) {
       await updateTodo(issue);
+      updated++;
     } else {
       await insertTodo(issue);
+      inserted++;
     }
   }
+  
+  console.log(`✅ GitHub issues synced: ${inserted} new, ${updated} updated`);
 }
 
 export async function fetchRepoIssues(owner: string, repo: string): Promise<Todo[]> {
-  const octokit = getOctokit();
+  const octokit = await getOctokit();
   
   const { data: issues } = await octokit.issues.listForRepo({
     owner,

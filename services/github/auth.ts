@@ -1,6 +1,7 @@
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import * as Crypto from 'expo-crypto';
+import * as SecureStore from 'expo-secure-store';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -16,6 +17,8 @@ const discovery = {
   tokenEndpoint: 'https://github.com/login/oauth/access_token',
 };
 
+const TOKEN_KEY = 'github_token';
+
 export interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
@@ -26,15 +29,56 @@ let authState: AuthState = {
   isAuthenticated: false,
 };
 
-export function getAuthState(): AuthState {
+// Load token from secure storage on module initialization
+let isInitialized = false;
+
+async function initializeAuth(): Promise<void> {
+  if (isInitialized) return;
+  
+  try {
+    console.log('🔐 Loading auth token from secure storage...');
+    const token = await SecureStore.getItemAsync(TOKEN_KEY);
+    if (token) {
+      console.log('✅ Token found in secure storage');
+      authState = {
+        token,
+        isAuthenticated: true,
+      };
+    } else {
+      console.log('⚠️ No token found in secure storage');
+    }
+  } catch (error) {
+    console.error('❌ Failed to load token from secure storage:', error);
+  }
+  
+  isInitialized = true;
+}
+
+export async function getAuthState(): Promise<AuthState> {
+  await initializeAuth();
   return { ...authState };
 }
 
-export function setAuthToken(token: string | null): void {
+export async function setAuthToken(token: string | null): Promise<void> {
+  console.log('💾 Saving auth token to secure storage...');
+  
   authState = {
     token,
     isAuthenticated: token !== null,
   };
+  
+  try {
+    if (token) {
+      await SecureStore.setItemAsync(TOKEN_KEY, token);
+      console.log('✅ Token saved to secure storage');
+    } else {
+      await SecureStore.deleteItemAsync(TOKEN_KEY);
+      console.log('✅ Token removed from secure storage');
+    }
+  } catch (error) {
+    console.error('❌ Failed to save token to secure storage:', error);
+    throw error;
+  }
 }
 
 export async function signInWithGitHub(): Promise<string | null> {
@@ -71,10 +115,10 @@ export async function signInWithGitHub(): Promise<string | null> {
 }
 
 export async function signOut(): Promise<void> {
-  setAuthToken(null);
+  await setAuthToken(null);
 }
 
 // For development: Allow setting a personal access token
-export function setPersonalAccessToken(token: string): void {
-  setAuthToken(token);
+export async function setPersonalAccessToken(token: string): Promise<void> {
+  await setAuthToken(token);
 }

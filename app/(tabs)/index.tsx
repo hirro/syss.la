@@ -7,6 +7,7 @@ import {
   TextInput,
   Modal,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
@@ -14,6 +15,7 @@ import { ThemedView } from '@/components/themed-view';
 import { useTodos } from '@/hooks/use-todos';
 import { useAuth } from '@/hooks/use-auth';
 import { syncGitHubIssues } from '@/services/github/issues';
+import { fullSync } from '@/services/sync-service';
 import { useState } from 'react';
 import type { Todo } from '@/types/todo';
 
@@ -22,29 +24,62 @@ export default function TodosScreen() {
   const { isAuthenticated } = useAuth();
   const [syncing, setSyncing] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedTodo, setSelectedTodo] = useState<Todo | null>(null);
   const [newTodoTitle, setNewTodoTitle] = useState('');
   const [newTodoDescription, setNewTodoDescription] = useState('');
   const insets = useSafeAreaInsets();
 
   const handleSync = async () => {
+    console.log('🔄 Sync button pressed');
+    
     if (!isAuthenticated) {
+      console.log('❌ Not authenticated');
       alert('Please authenticate first in the Settings tab');
       return;
     }
 
     try {
       setSyncing(true);
+      console.log('✅ Starting sync process...');
+      
+      // Sync GitHub issues
+      console.log('📥 Syncing GitHub issues...');
       await syncGitHubIssues();
+      console.log('✅ GitHub issues synced');
+      
+      // Full bidirectional sync with GitHub storage
+      console.log('🔄 Starting full bidirectional sync...');
+      await fullSync();
+      console.log('✅ Full sync completed');
+      
+      // Refresh local list
+      console.log('🔄 Refreshing local todo list...');
       await refresh();
-    } catch (err) {
-      console.error('Sync failed:', err);
-      alert('Failed to sync GitHub issues');
+      console.log('✅ Local list refreshed');
+      
+      console.log('🎉 Sync completed successfully!');
+    } catch (err: any) {
+      console.error('❌ Sync failed:', err);
+      console.error('Error details:', {
+        message: err.message,
+        stack: err.stack,
+        name: err.name,
+      });
+      const message = err.message || 'Failed to sync';
+      alert(`Sync failed: ${message}`);
     } finally {
       setSyncing(false);
+      console.log('🔄 Sync process ended');
     }
   };
 
-  const handleTodoPress = (id: string, title: string) => {
+  const handleTodoPress = (todo: Todo) => {
+    setSelectedTodo(todo);
+    setShowDetailModal(true);
+  };
+
+  const handleCompletePress = (id: string, title: string) => {
     Alert.alert(
       'Complete Todo?',
       `Mark "${title}" as complete?`,
@@ -54,7 +89,24 @@ export default function TodosScreen() {
           text: 'Complete',
           onPress: async () => {
             try {
+              console.log('✅ Completing todo:', id);
               await completeTodo(id);
+              
+              if (showDetailModal) {
+                setShowDetailModal(false);
+              }
+              
+              // Sync to GitHub immediately after completing
+              if (isAuthenticated) {
+                console.log('🔄 Auto-syncing after completion...');
+                try {
+                  await fullSync();
+                  console.log('✅ Auto-sync completed');
+                } catch (err) {
+                  console.error('⚠️ Auto-sync failed:', err);
+                  // Don't show error to user - they can manually sync later
+                }
+              }
             } catch {
               alert('Failed to complete todo');
             }
@@ -129,29 +181,17 @@ export default function TodosScreen() {
             <View style={styles.todoItem}>
               <TouchableOpacity
                 style={styles.checkbox}
-                onPress={() => handleTodoPress(item.id, item.title)}
+                onPress={() => handleCompletePress(item.id, item.title)}
                 activeOpacity={0.7}>
                 <View style={styles.checkboxCircle} />
               </TouchableOpacity>
               
-              <View style={styles.todoContent}>
+              <TouchableOpacity
+                style={styles.todoContent}
+                onPress={() => handleTodoPress(item)}
+                activeOpacity={0.7}>
                 <ThemedText type="defaultSemiBold">{item.title}</ThemedText>
-                {item.description && (
-                  <ThemedText style={styles.todoDescription} numberOfLines={2}>
-                    {item.description}
-                  </ThemedText>
-                )}
-                <View style={styles.todoMeta}>
-                  <ThemedText style={styles.metaText}>
-                    {item.source === 'github-issue' ? '🔗 GitHub' : '📝 Personal'}
-                  </ThemedText>
-                  {item.github && (
-                    <ThemedText style={styles.metaText}>
-                      {item.github.owner}/{item.github.repo}#{item.github.issueNumber}
-                    </ThemedText>
-                  )}
-                </View>
-              </View>
+              </TouchableOpacity>
             </View>
           )}
           contentContainerStyle={styles.listContent}
@@ -162,6 +202,87 @@ export default function TodosScreen() {
         <ThemedText style={styles.addInputText}>+ Add a task</ThemedText>
       </TouchableOpacity>
 
+      {/* Detail Modal */}
+      <Modal
+        visible={showDetailModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowDetailModal(false)}>
+        <ThemedView style={[styles.detailContainer, { paddingTop: insets.top }]}>
+          <View style={styles.detailHeader}>
+            <TouchableOpacity onPress={() => setShowDetailModal(false)}>
+              <ThemedText type="link">← Back</ThemedText>
+            </TouchableOpacity>
+          </View>
+
+          {selectedTodo && (
+            <ScrollView style={styles.detailContent}>
+              <View style={styles.detailTitleRow}>
+                <TouchableOpacity
+                  style={styles.checkbox}
+                  onPress={() => handleCompletePress(selectedTodo.id, selectedTodo.title)}
+                  activeOpacity={0.7}>
+                  <View style={styles.checkboxCircle} />
+                </TouchableOpacity>
+                <ThemedText type="title" style={styles.detailTitle}>
+                  {selectedTodo.title}
+                </ThemedText>
+              </View>
+
+              {selectedTodo.description && (
+                <View style={styles.detailSection}>
+                  <ThemedText style={styles.detailSectionTitle}>Description</ThemedText>
+                  <ThemedText>{selectedTodo.description}</ThemedText>
+                </View>
+              )}
+
+              <View style={styles.detailSection}>
+                <ThemedText style={styles.detailSectionTitle}>Source</ThemedText>
+                <ThemedText>
+                  {selectedTodo.source === 'github-issue' ? '🔗 GitHub Issue' : '📝 Personal Todo'}
+                </ThemedText>
+              </View>
+
+              {selectedTodo.github && (
+                <View style={styles.detailSection}>
+                  <ThemedText style={styles.detailSectionTitle}>GitHub</ThemedText>
+                  <ThemedText>
+                    {selectedTodo.github.owner}/{selectedTodo.github.repo} #{selectedTodo.github.issueNumber}
+                  </ThemedText>
+                  <ThemedText style={styles.detailLink}>{selectedTodo.github.url}</ThemedText>
+                </View>
+              )}
+
+              {selectedTodo.labels && selectedTodo.labels.length > 0 && (
+                <View style={styles.detailSection}>
+                  <ThemedText style={styles.detailSectionTitle}>Labels</ThemedText>
+                  <View style={styles.labelContainer}>
+                    {selectedTodo.labels.map((label, index) => (
+                      <View key={index} style={styles.label}>
+                        <ThemedText style={styles.labelText}>{label}</ThemedText>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              <View style={styles.detailSection}>
+                <ThemedText style={styles.detailSectionTitle}>Created</ThemedText>
+                <ThemedText>{new Date(selectedTodo.createdAt).toLocaleString()}</ThemedText>
+              </View>
+
+              {selectedTodo.updatedAt && (
+                <View style={styles.detailSection}>
+                  <ThemedText style={styles.detailSectionTitle}>Updated</ThemedText>
+                  <ThemedText>{new Date(selectedTodo.updatedAt).toLocaleString()}</ThemedText>
+                </View>
+              )}
+            </ScrollView>
+          )}
+        </ThemedView>
+      </Modal>
+
+      {/* Add Modal */}
       <Modal
         visible={showAddModal}
         animationType="slide"
@@ -291,6 +412,64 @@ const styles = StyleSheet.create({
   addInputText: {
     fontSize: 16,
     opacity: 0.5,
+  },
+  detailContainer: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  detailHeader: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  detailContent: {
+    flex: 1,
+    padding: 20,
+  },
+  detailTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 24,
+  },
+  detailTitle: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  detailSection: {
+    marginBottom: 24,
+    padding: 16,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+  },
+  detailSectionTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    opacity: 0.6,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+  },
+  detailLink: {
+    color: '#007AFF',
+    marginTop: 4,
+  },
+  labelContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  label: {
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  labelText: {
+    fontSize: 12,
+    color: '#007AFF',
   },
   modalOverlay: {
     flex: 1,
