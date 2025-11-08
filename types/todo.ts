@@ -25,6 +25,7 @@ export interface Todo {
   dueDate?: string;
   icon?: string; // Custom icon for personal todos
   github?: GitHubIssueMetadata;
+  reopenedFrom?: string; // ID of the completed todo this was reopened from
 }
 
 export interface ActiveTodo extends Todo {

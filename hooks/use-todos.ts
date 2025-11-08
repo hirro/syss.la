@@ -93,6 +93,32 @@ export function useTodos() {
     [todos, loadTodos]
   );
 
+  const reopenTodo = useCallback(
+    async (completedTodoId: string) => {
+      try {
+        console.log('🔄 Reopening todo:', completedTodoId);
+        const completedTodo = completedTodos.find((t) => t.id === completedTodoId);
+        if (completedTodo && completedTodo.source === 'personal') {
+          // Create a new todo with a new ID
+          const reopenedTodo: Todo = {
+            ...completedTodo,
+            id: `personal-${Date.now()}`,
+            completedAt: undefined,
+            updatedAt: new Date().toISOString(),
+            reopenedFrom: completedTodoId,
+          };
+          await insertTodo(reopenedTodo);
+          await loadTodos();
+          console.log('✅ Todo reopened with new ID:', reopenedTodo.id);
+        }
+      } catch (err) {
+        console.error('Failed to reopen todo:', err);
+        throw err;
+      }
+    },
+    [completedTodos, loadTodos]
+  );
+
   return {
     todos,
     completedTodos,
@@ -103,5 +129,6 @@ export function useTodos() {
     editTodo,
     removeTodo,
     completeTodo,
+    reopenTodo,
   };
 }

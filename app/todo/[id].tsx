@@ -23,7 +23,7 @@ export default function TodoDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { isAuthenticated } = useAuth();
-  const { todos, completedTodos, editTodo, completeTodo } = useTodos();
+  const { todos, completedTodos, editTodo, completeTodo, reopenTodo } = useTodos();
   
   const [todo, setTodo] = useState<Todo | null>(null);
   const [originalTodo, setOriginalTodo] = useState<Todo | null>(null);
@@ -62,7 +62,7 @@ export default function TodoDetailScreen() {
   // Save changes when navigating away
   useEffect(() => {
     return () => {
-      if (todo && originalTodo && todo.source === 'personal') {
+      if (todo && originalTodo && todo.source === 'personal' && !todo.completedAt) {
         const hasChanges = 
           todo.title !== originalTodo.title ||
           todo.description !== originalTodo.description ||
@@ -96,7 +96,7 @@ export default function TodoDetailScreen() {
   }, [todo, originalTodo, editTodo]);
 
   const handleUpdateTodoField = (field: 'title' | 'description' | 'icon', value: string) => {
-    if (!todo || todo.source !== 'personal') return;
+    if (!todo || todo.source !== 'personal' || todo.completedAt) return;
     
     if (field === 'title' && !value.trim()) {
       return;
@@ -136,7 +136,7 @@ export default function TodoDetailScreen() {
   }, [isAuthenticated]);
 
   const handleCompleteTodo = () => {
-    if (!todo) return;
+    if (!todo || todo.completedAt) return;
     
     Alert.alert(
       'Complete Todo?',
@@ -153,6 +153,31 @@ export default function TodoDetailScreen() {
             } catch (error) {
               console.error('❌ Failed to complete todo:', error);
               alert('Failed to complete todo');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleReopenTodo = () => {
+    if (!todo || !todo.completedAt || todo.source !== 'personal') return;
+    
+    Alert.alert(
+      'Reopen Todo?',
+      `Reopen "${todo.title}"? This will create a new todo with a new ID.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reopen',
+          onPress: async () => {
+            try {
+              console.log('🔄 Reopening todo:', todo.id);
+              await reopenTodo(todo.id);
+              router.back();
+            } catch (error) {
+              console.error('❌ Failed to reopen todo:', error);
+              alert('Failed to reopen todo');
             }
           },
         },
@@ -219,13 +244,15 @@ export default function TodoDetailScreen() {
     <ThemedView style={styles.container}>
       <ScrollView style={styles.content}>
         <View style={styles.titleRow}>
-          <TouchableOpacity
-            style={styles.checkbox}
-            onPress={handleCompleteTodo}
-            activeOpacity={0.7}>
-            <View style={styles.checkboxCircle} />
-          </TouchableOpacity>
-          {todo.source === 'personal' ? (
+          {!todo.completedAt && (
+            <TouchableOpacity
+              style={styles.checkbox}
+              onPress={handleCompleteTodo}
+              activeOpacity={0.7}>
+              <View style={styles.checkboxCircle} />
+            </TouchableOpacity>
+          )}
+          {todo.source === 'personal' && !todo.completedAt ? (
             <TextInput
               style={[styles.input, styles.titleInput]}
               value={todo.title}
@@ -241,7 +268,7 @@ export default function TodoDetailScreen() {
 
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Description</ThemedText>
-          {todo.source === 'personal' ? (
+          {todo.source === 'personal' && !todo.completedAt ? (
             <TextInput
               style={[styles.input, styles.textArea]}
               value={todo.description || ''}
@@ -255,7 +282,7 @@ export default function TodoDetailScreen() {
           )}
         </View>
 
-        {todo.source === 'personal' && (
+        {todo.source === 'personal' && !todo.completedAt && (
           <View style={styles.section}>
             <View style={styles.iconSectionHeader}>
               <ThemedText style={styles.sectionTitle}>Custom icon</ThemedText>
@@ -315,8 +342,24 @@ export default function TodoDetailScreen() {
           <ThemedText>
             {todo.source === 'github-issue' ? '🔗 GitHub Issue' : '📝 Personal Todo'}
           </ThemedText>
+        </View>
+
+        {todo.completedAt && (
+          <View style={styles.section}>
+            <ThemedText style={styles.sectionTitle}>Status</ThemedText>
+            <ThemedText>✅ Completed</ThemedText>
+            {todo.source === 'personal' && (
+              <TouchableOpacity
+                style={styles.reopenButton}
+                onPress={handleReopenTodo}>
+                <ThemedText style={styles.reopenButtonText}>Reopen Todo</ThemedText>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
           
-          {todo.source === 'personal' && isAuthenticated && (
+        {todo.source === 'personal' && !todo.completedAt && isAuthenticated && (
+          <View style={styles.section}>
             <View style={styles.convertSection}>
               <ThemedText style={styles.convertLabel}>Convert to GitHub Issue:</ThemedText>
               
@@ -369,8 +412,8 @@ export default function TodoDetailScreen() {
                 </ThemedText>
               </TouchableOpacity>
             </View>
-          )}
-        </View>
+          </View>
+        )}
 
         {todo.github && (
           <View style={styles.section}>
@@ -586,7 +629,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   openGitHubButtonText: {
+    color: '#007AFF',
+    fontSize: 14,
+  },
+  reopenButton: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#007AFF',
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  reopenButtonText: {
     color: '#fff',
+    fontSize: 14,
     fontWeight: '600',
   },
 });
