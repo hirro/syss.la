@@ -23,6 +23,7 @@ export interface Todo {
   status?: TodoStatus;
   labels?: string[];
   dueDate?: string;
+  icon?: string; // Custom icon for personal todos
   github?: GitHubIssueMetadata;
 }
 
