@@ -3,7 +3,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useAuth } from '@/hooks/use-auth';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getCurrentUser, listUserRepos, getRepo } from '@/services/github/api-client';
 import { getSyncConfig, setSyncConfig } from '@/services/sync-service';
 
@@ -33,16 +33,6 @@ export default function SettingsScreen() {
   const [showBranchList, setShowBranchList] = useState(false);
   const insets = useSafeAreaInsets();
 
-  useEffect(() => {
-    loadSyncConfig();
-  }, []);
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      loadRepositories();
-    }
-  }, [isAuthenticated]);
-
   const loadSyncConfig = async () => {
     const config = await getSyncConfig();
     if (config) {
@@ -57,7 +47,7 @@ export default function SettingsScreen() {
     }
   };
 
-  const loadRepositories = async () => {
+  const loadRepositories = useCallback(async () => {
     try {
       setLoadingRepos(true);
       console.log('📥 Loading repositories...');
@@ -69,7 +59,7 @@ export default function SettingsScreen() {
     } finally {
       setLoadingRepos(false);
     }
-  };
+  }, []);
 
   const loadBranches = async (owner: string, repo: string) => {
     try {
@@ -99,6 +89,16 @@ export default function SettingsScreen() {
     setSyncBranch(branch.name);
     setShowBranchList(false);
   };
+
+  useEffect(() => {
+    loadSyncConfig();
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadRepositories();
+    }
+  }, [isAuthenticated, loadRepositories]);
 
   const handleLogin = async () => {
     if (!token.trim()) {
@@ -155,9 +155,21 @@ export default function SettingsScreen() {
           {isAuthenticated ? (
             <View style={styles.authSection}>
               <ThemedText>Authenticated as: {username}</ThemedText>
-              <TouchableOpacity style={styles.button} onPress={handleLogout}>
-                <ThemedText type="link">Sign Out</ThemedText>
-              </TouchableOpacity>
+              <View style={styles.buttonRow}>
+                <TouchableOpacity 
+                  style={[styles.button, styles.buttonFlex]} 
+                  onPress={loadRepositories}
+                  disabled={loadingRepos}>
+                  <ThemedText type="link">
+                    {loadingRepos ? 'Loading...' : 'Reload GH Repos'}
+                  </ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.button, styles.buttonFlex]} 
+                  onPress={handleLogout}>
+                  <ThemedText type="link">Sign Out</ThemedText>
+                </TouchableOpacity>
+              </View>
             </View>
           ) : (
             <View style={styles.authSection}>
@@ -317,6 +329,13 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.5,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  buttonFlex: {
+    flex: 1,
   },
   selector: {
     flexDirection: 'row',

@@ -1,33 +1,39 @@
-import {
-  StyleSheet,
-  FlatList,
-  View,
-  TouchableOpacity,
-  ActivityIndicator,
-  TextInput,
-  Modal,
-  Alert,
-  ScrollView,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useTodos } from '@/hooks/use-todos';
 import { useAuth } from '@/hooks/use-auth';
+import { useTodos } from '@/hooks/use-todos';
+import { createIssue, listUserRepos } from '@/services/github/api-client';
 import { syncGitHubIssues } from '@/services/github/issues';
 import { fullSync } from '@/services/sync-service';
-import { useState } from 'react';
 import type { Todo } from '@/types/todo';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Linking,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TodosScreen() {
-  const { todos, loading, error, refresh, completeTodo, addTodo } = useTodos();
+  const { todos, loading, error, refresh, completeTodo, addTodo, editTodo, completedTodos } = useTodos();
   const { isAuthenticated } = useAuth();
   const [syncing, setSyncing] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showRepoDropdown, setShowRepoDropdown] = useState(false);
   const [selectedTodo, setSelectedTodo] = useState<Todo | null>(null);
   const [newTodoTitle, setNewTodoTitle] = useState('');
   const [newTodoDescription, setNewTodoDescription] = useState('');
+  const [repositories, setRepositories] = useState<any[]>([]);
+  const [selectedRepoForConvert, setSelectedRepoForConvert] = useState<any | null>(null);
+  const [loadingRepos, setLoadingRepos] = useState(false);
+  const [converting, setConverting] = useState(false);
   const insets = useSafeAreaInsets();
 
   const handleSync = async () => {
@@ -116,6 +122,115 @@ export default function TodosScreen() {
     );
   };
 
+  const loadRepositories = useCallback(async () => {
+    if (!isAuthenticated) return;
+    
+    try {
+      setLoadingRepos(true);
+      console.log('📥 Loading repositories...');
+      const repos = await listUserRepos();
+      console.log(`✅ Loaded ${repos.length} repositories`);
+      console.log('First 5 repositories:', repos.slice(0, 5).map(r => ({
+        name: r.full_name,
+        description: r.description,
+        id: r.id
+      })));
+      setRepositories(repos);
+    } catch (error) {
+      console.error('❌ Failed to load repositories:', error);
+    } finally {
+      setLoadingRepos(false);
+    }
+  }, [isAuthenticated]);
+
+  // Load repositories on mount if authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadRepositories();
+    }
+  }, [isAuthenticated, loadRepositories]);
+
+  const handleConvertToIssue = async () => {
+    if (!selectedTodo || !selectedRepoForConvert) {
+      alert('Please select a repository first');
+      return;
+    }
+    
+    try {
+      setConverting(true);
+      console.log(`🔄 Converting todo "${selectedTodo.title}" to GitHub issue in ${selectedRepoForConvert.owner.login}/${selectedRepoForConvert.name}...`);
+      
+      // Create the issue
+      const issue = await createIssue(
+        selectedRepoForConvert.owner.login,
+        selectedRepoForConvert.name,
+        selectedTodo.title,
+        selectedTodo.description,
+        selectedTodo.labels
+      );
+      
+      console.log(`✅ Issue created: ${selectedRepoForConvert.owner.login}/${selectedRepoForConvert.name}#${issue.number}`);
+      console.log(`🔗 Issue URL: ${issue.html_url}`);
+      
+      // Update the todo with GitHub metadata
+      const updatedTodo: Todo = {
+        ...selectedTodo,
+        source: 'github-issue',
+        github: {
+          owner: selectedRepoForConvert.owner.login,
+          repo: selectedRepoForConvert.name,
+          issueNumber: issue.number,
+          state: 'open',
+          url: issue.html_url,
+        },
+        updatedAt: new Date().toISOString(),
+      };
+      
+      console.log('💾 Updating local todo with GitHub metadata...');
+      await editTodo(updatedTodo);
+      
+      // Sync to GitHub storage
+      if (isAuthenticated) {
+        console.log('🔄 Syncing to GitHub storage...');
+        await fullSync();
+        console.log('✅ Synced to GitHub storage');
+      }
+      
+      setShowDetailModal(false);
+      setSelectedTodo(null);
+      setSelectedRepoForConvert(null);
+      setShowRepoDropdown(false);
+      
+      console.log('🎉 Conversion complete!');
+    } catch (error: any) {
+      console.error('❌ Failed to convert to issue:', error);
+      alert(`Failed to create GitHub issue: ${error.message || 'Unknown error'}`);
+    } finally {
+      setConverting(false);
+    }
+  };
+
+  // Filter completed todos by date
+  const getCompletedTodosForDate = (date: Date) => {
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+    
+    return completedTodos.filter((todo: Todo) => {
+      if (!todo.completedAt) return false;
+      const completedDate = new Date(todo.completedAt);
+      return completedDate >= startOfDay && completedDate <= endOfDay;
+    });
+  };
+
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  const todayCompleted = getCompletedTodosForDate(today);
+  const yesterdayCompleted = getCompletedTodosForDate(yesterday);
+
   const handleAddTodo = async () => {
     if (!newTodoTitle.trim()) {
       alert('Please enter a title');
@@ -166,37 +281,81 @@ export default function TodosScreen() {
         </TouchableOpacity>
       </View>
 
-      {todos.length === 0 ? (
-        <View style={styles.emptyState}>
-          <ThemedText>No active todos</ThemedText>
-          {isAuthenticated && (
-            <ThemedText>Tap &quot;Sync GitHub&quot; to fetch your issues</ThemedText>
-          )}
-        </View>
-      ) : (
-        <FlatList
-          data={todos}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <View style={styles.todoItem}>
-              <TouchableOpacity
-                style={styles.checkbox}
-                onPress={() => handleCompletePress(item.id, item.title)}
-                activeOpacity={0.7}>
-                <View style={styles.checkboxCircle} />
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={styles.todoContent}
-                onPress={() => handleTodoPress(item)}
-                activeOpacity={0.7}>
-                <ThemedText type="defaultSemiBold">{item.title}</ThemedText>
-              </TouchableOpacity>
-            </View>
-          )}
-          contentContainerStyle={styles.listContent}
-        />
-      )}
+      <ScrollView style={styles.scrollContainer}>
+        {/* Active Todos */}
+        {todos.length === 0 ? (
+          <View style={styles.emptyState}>
+            <ThemedText>No active todos</ThemedText>
+            {isAuthenticated && (
+              <ThemedText>Tap &quot;Sync GitHub&quot; to fetch your issues</ThemedText>
+            )}
+          </View>
+        ) : (
+          <View>
+            {todos.map((item) => (
+              <View key={item.id} style={styles.todoItem}>
+                <TouchableOpacity
+                  style={styles.checkbox}
+                  onPress={() => handleCompletePress(item.id, item.title)}
+                  activeOpacity={0.7}>
+                  <View style={styles.checkboxCircle} />
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={styles.todoContent}
+                  onPress={() => handleTodoPress(item)}
+                  activeOpacity={0.7}>
+                  <ThemedText type="defaultSemiBold">{item.title}</ThemedText>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Finished Today */}
+        {todayCompleted.length > 0 && (
+          <View style={styles.completedSection}>
+            <TouchableOpacity style={styles.completedHeader}>
+              <ThemedText style={styles.completedHeaderText}>Finished Today</ThemedText>
+            </TouchableOpacity>
+            {todayCompleted.map((item: Todo) => (
+              <View key={item.id} style={styles.completedItem}>
+                <View style={styles.checkboxCompleted}>
+                  <ThemedText style={styles.checkmark}>✓</ThemedText>
+                </View>
+                <TouchableOpacity
+                  style={styles.todoContent}
+                  onPress={() => handleTodoPress(item)}
+                  activeOpacity={0.7}>
+                  <ThemedText style={styles.completedText}>{item.title}</ThemedText>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Finished Yesterday */}
+        {yesterdayCompleted.length > 0 && (
+          <View style={styles.completedSection}>
+            <TouchableOpacity style={styles.completedHeader}>
+              <ThemedText style={styles.completedHeaderText}>Finished Yesterday</ThemedText>
+            </TouchableOpacity>
+            {yesterdayCompleted.map((item: Todo) => (
+              <View key={item.id} style={styles.completedItem}>
+                <View style={styles.checkboxCompleted}>
+                  <ThemedText style={styles.checkmark}>✓</ThemedText>
+                </View>
+                <TouchableOpacity
+                  style={styles.todoContent}
+                  onPress={() => handleTodoPress(item)}
+                  activeOpacity={0.7}>
+                  <ThemedText style={styles.completedText}>{item.title}</ThemedText>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        )}
+      </ScrollView>
 
       <TouchableOpacity style={styles.addInputButton} onPress={() => setShowAddModal(true)}>
         <ThemedText style={styles.addInputText}>+ Add a task</ThemedText>
@@ -241,6 +400,68 @@ export default function TodosScreen() {
                 <ThemedText>
                   {selectedTodo.source === 'github-issue' ? '🔗 GitHub Issue' : '📝 Personal Todo'}
                 </ThemedText>
+                
+                {selectedTodo.source === 'personal' && isAuthenticated && (
+                  <View style={styles.convertSection}>
+                    <ThemedText style={styles.convertLabel}>Convert to GitHub Issue:</ThemedText>
+                    
+                    {/* Repository Dropdown */}
+                    <TouchableOpacity
+                      style={styles.repoSelector}
+                      onPress={() => setShowRepoDropdown(!showRepoDropdown)}>
+                      <ThemedText style={styles.repoSelectorText}>
+                        {selectedRepoForConvert 
+                          ? selectedRepoForConvert.full_name 
+                          : loadingRepos 
+                            ? 'Loading repositories...' 
+                            : 'Select Repository'}
+                      </ThemedText>
+                      <ThemedText>▼</ThemedText>
+                    </TouchableOpacity>
+
+                    {showRepoDropdown && (
+                      <ScrollView style={styles.repoDropdown}>
+                        {loadingRepos ? (
+                          <ActivityIndicator style={styles.loader} />
+                        ) : repositories.length === 0 ? (
+                          <ThemedText style={styles.emptyRepoText}>
+                            No repositories found
+                          </ThemedText>
+                        ) : (
+                          repositories.map((repo) => (
+                            <TouchableOpacity
+                              key={repo.id}
+                              style={styles.repoDropdownItem}
+                              onPress={() => {
+                                setSelectedRepoForConvert(repo);
+                                setShowRepoDropdown(false);
+                              }}>
+                              <ThemedText>{repo.full_name}</ThemedText>
+                              {repo.description && (
+                                <ThemedText style={styles.repoDescriptionSmall}>
+                                  {repo.description}
+                                </ThemedText>
+                              )}
+                            </TouchableOpacity>
+                          ))
+                        )}
+                      </ScrollView>
+                    )}
+
+                    {/* Convert Button */}
+                    <TouchableOpacity
+                      style={[
+                        styles.convertButton,
+                        (!selectedRepoForConvert || converting) && styles.convertButtonDisabled
+                      ]}
+                      onPress={handleConvertToIssue}
+                      disabled={!selectedRepoForConvert || converting}>
+                      <ThemedText style={styles.convertButtonText}>
+                        {converting ? 'Converting...' : 'Convert to Issue'}
+                      </ThemedText>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
 
               {selectedTodo.github && (
@@ -250,6 +471,19 @@ export default function TodosScreen() {
                     {selectedTodo.github.owner}/{selectedTodo.github.repo} #{selectedTodo.github.issueNumber}
                   </ThemedText>
                   <ThemedText style={styles.detailLink}>{selectedTodo.github.url}</ThemedText>
+                  
+                  <TouchableOpacity
+                    style={styles.openGitHubButton}
+                    onPress={() => {
+                      if (selectedTodo.github?.url) {
+                        console.log('🔗 Opening GitHub issue:', selectedTodo.github.url);
+                        Linking.openURL(selectedTodo.github.url);
+                      }
+                    }}>
+                    <ThemedText style={styles.openGitHubButtonText}>
+                      Open in GitHub
+                    </ThemedText>
+                  </TouchableOpacity>
                 </View>
               )}
 
@@ -286,10 +520,9 @@ export default function TodosScreen() {
       <Modal
         visible={showAddModal}
         animationType="slide"
-        transparent
+        presentationStyle="pageSheet"
         onRequestClose={() => setShowAddModal(false)}>
-        <View style={styles.modalOverlay}>
-          <ThemedView style={styles.modalContent}>
+        <ThemedView style={[styles.addModalContainer, { paddingTop: insets.top }]}>
             <ThemedText type="subtitle">Add New Todo</ThemedText>
 
             <TextInput
@@ -324,8 +557,7 @@ export default function TodosScreen() {
                 <ThemedText style={styles.buttonPrimaryText}>Add Todo</ThemedText>
               </TouchableOpacity>
             </View>
-          </ThemedView>
-        </View>
+        </ThemedView>
       </Modal>
     </ThemedView>
   );
@@ -517,5 +749,174 @@ const styles = StyleSheet.create({
   buttonPrimaryText: {
     color: '#fff',
     fontWeight: '600',
+  },
+  convertButton: {
+    marginTop: 12,
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: '#007AFF',
+    alignItems: 'center',
+  },
+  convertButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  instructions: {
+    fontSize: 14,
+    opacity: 0.7,
+  },
+  repoList: {
+    maxHeight: 300,
+  },
+  repoItem: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  repoDescription: {
+    fontSize: 12,
+    opacity: 0.6,
+    marginTop: 4,
+  },
+  loader: {
+    padding: 20,
+  },
+  convertingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 12,
+  },
+  convertingText: {
+    marginTop: 12,
+    fontSize: 16,
+  },
+  convertModalContainer: {
+    flex: 1,
+    padding: 20,
+    paddingTop: 60,
+  },
+  convertModalTitle: {
+    marginBottom: 16,
+  },
+  convertSection: {
+    marginTop: 16,
+    gap: 12,
+  },
+  convertLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  repoSelector: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: '#fff',
+  },
+  repoSelectorText: {
+    flex: 1,
+    fontSize: 14,
+  },
+  repoDropdown: {
+    maxHeight: 200,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    marginTop: 4,
+  },
+  repoDropdownItem: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  repoDescriptionSmall: {
+    fontSize: 11,
+    opacity: 0.6,
+    marginTop: 2,
+  },
+  emptyRepoText: {
+    padding: 20,
+    textAlign: 'center',
+    opacity: 0.6,
+  },
+  convertButtonDisabled: {
+    opacity: 0.5,
+  },
+  openGitHubButton: {
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#24292e',
+    alignItems: 'center',
+  },
+  openGitHubButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  addModalContainer: {
+    flex: 1,
+    padding: 20,
+    paddingTop: 60,
+    gap: 16,
+  },
+  scrollContainer: {
+    flex: 1,
+  },
+  completedSection: {
+    marginTop: 24,
+  },
+  completedHeader: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  completedHeaderText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#007AFF',
+  },
+  completedItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  checkboxCompleted: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#007AFF',
+    marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkmark: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  completedText: {
+    textDecorationLine: 'line-through',
+    opacity: 0.6,
   },
 });

@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Todo } from '@/types/todo';
-import { getActiveTodos, insertTodo, updateTodo, deleteTodo } from '@/lib/db/todos';
+import { getActiveTodos, getCompletedTodos, insertTodo, updateTodo, deleteTodo } from '@/lib/db/todos';
 import { initDatabase } from '@/lib/db/client';
 
 export function useTodos() {
   const [todos, setTodos] = useState<Todo[]>([]);
+  const [completedTodos, setCompletedTodos] = useState<Todo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -13,8 +14,10 @@ export function useTodos() {
       setLoading(true);
       setError(null);
       await initDatabase();
-      const data = await getActiveTodos();
-      setTodos(data);
+      const activeTodos = await getActiveTodos();
+      const completed = await getCompletedTodos();
+      setTodos(activeTodos);
+      setCompletedTodos(completed);
     } catch (err) {
       setError(err as Error);
       console.error('Failed to load todos:', err);
@@ -92,6 +95,7 @@ export function useTodos() {
 
   return {
     todos,
+    completedTodos,
     loading,
     error,
     refresh: loadTodos,

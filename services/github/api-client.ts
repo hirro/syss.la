@@ -129,3 +129,24 @@ export async function createOrUpdateFile(
     sha,
   });
 }
+
+export async function createIssue(
+  owner: string,
+  repo: string,
+  title: string,
+  body?: string,
+  labels?: string[]
+): Promise<{ number: number; html_url: string }> {
+  const octokit = await getOctokit();
+  const { data } = await octokit.issues.create({
+    owner,
+    repo,
+    title,
+    body,
+    labels,
+  });
+  return {
+    number: data.number,
+    html_url: data.html_url,
+  };
+}
