@@ -1,112 +1,136 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { Collapsible } from '@/components/ui/collapsible';
-import { ExternalLink } from '@/components/external-link';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
+import { StyleSheet, TextInput, TouchableOpacity, View, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Fonts } from '@/constants/theme';
+import { useAuth } from '@/hooks/use-auth';
+import { useState } from 'react';
+import { getCurrentUser } from '@/services/github/api-client';
 
-export default function TabTwoScreen() {
+export default function SettingsScreen() {
+  const { isAuthenticated, login, logout } = useAuth();
+  const [token, setToken] = useState('');
+  const [username, setUsername] = useState('');
+  const [loading, setLoading] = useState(false);
+  const insets = useSafeAreaInsets();
+
+  const handleLogin = async () => {
+    if (!token.trim()) {
+      alert('Please enter a GitHub Personal Access Token');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await login(token);
+      const user = await getCurrentUser();
+      setUsername(user.login);
+      setToken('');
+      alert(`Authenticated as ${user.login}`);
+    } catch {
+      alert('Authentication failed. Please check your token.');
+      await logout();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    setUsername('');
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText
-          type="title"
-          style={{
-            fontFamily: Fonts.rounded,
-          }}>
-          Explore
-        </ThemedText>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingTop: insets.top }}>
+      <ThemedView style={styles.content}>
+        <ThemedText type="title">Settings</ThemedText>
+
+        <View style={styles.section}>
+          <ThemedText type="subtitle">GitHub Authentication</ThemedText>
+          
+          {isAuthenticated ? (
+            <View style={styles.authSection}>
+              <ThemedText>Authenticated as: {username}</ThemedText>
+              <TouchableOpacity style={styles.button} onPress={handleLogout}>
+                <ThemedText type="link">Sign Out</ThemedText>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.authSection}>
+              <ThemedText>
+                Enter your GitHub Personal Access Token to sync issues and store data.
+              </ThemedText>
+              
+              <ThemedText style={styles.instructions}>
+                Create a token at: github.com/settings/tokens
+              </ThemedText>
+              
+              <ThemedText style={styles.instructions}>
+                Required scopes: repo, user, read:org
+              </ThemedText>
+
+              <TextInput
+                style={styles.input}
+                placeholder="ghp_..."
+                value={token}
+                onChangeText={setToken}
+                secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+
+              <TouchableOpacity
+                style={[styles.button, loading && styles.buttonDisabled]}
+                onPress={handleLogin}
+                disabled={loading}>
+                <ThemedText type="link">{loading ? 'Authenticating...' : 'Sign In'}</ThemedText>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <ThemedText type="subtitle">About</ThemedText>
+          <ThemedText>Syssla v1.0.0</ThemedText>
+          <ThemedText>A developer productivity app</ThemedText>
+        </View>
       </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image
-          source={require('@/assets/images/react-logo.png')}
-          style={{ width: 100, height: 100, alignSelf: 'center' }}
-        />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful{' '}
-          <ThemedText type="defaultSemiBold" style={{ fontFamily: Fonts.mono }}>
-            react-native-reanimated
-          </ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
-            </ThemedText>
-          ),
-        })}
-      </Collapsible>
-    </ParallaxScrollView>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
+  container: {
+    flex: 1,
   },
-  titleContainer: {
-    flexDirection: 'row',
-    gap: 8,
+  content: {
+    padding: 20,
+    gap: 24,
+  },
+  section: {
+    gap: 12,
+  },
+  authSection: {
+    gap: 12,
+  },
+  instructions: {
+    fontSize: 12,
+    opacity: 0.7,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: '#fff',
+  },
+  button: {
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    alignItems: 'center',
+  },
+  buttonDisabled: {
+    opacity: 0.5,
   },
 });

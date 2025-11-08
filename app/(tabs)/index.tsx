@@ -1,98 +1,342 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
+import {
+  StyleSheet,
+  FlatList,
+  View,
+  TouchableOpacity,
+  ActivityIndicator,
+  TextInput,
+  Modal,
+  Alert,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { useTodos } from '@/hooks/use-todos';
+import { useAuth } from '@/hooks/use-auth';
+import { syncGitHubIssues } from '@/services/github/issues';
+import { useState } from 'react';
+import type { Todo } from '@/types/todo';
 
-export default function HomeScreen() {
+export default function TodosScreen() {
+  const { todos, loading, error, refresh, completeTodo, addTodo } = useTodos();
+  const { isAuthenticated } = useAuth();
+  const [syncing, setSyncing] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newTodoTitle, setNewTodoTitle] = useState('');
+  const [newTodoDescription, setNewTodoDescription] = useState('');
+  const insets = useSafeAreaInsets();
+
+  const handleSync = async () => {
+    if (!isAuthenticated) {
+      alert('Please authenticate first in the Settings tab');
+      return;
+    }
+
+    try {
+      setSyncing(true);
+      await syncGitHubIssues();
+      await refresh();
+    } catch (err) {
+      console.error('Sync failed:', err);
+      alert('Failed to sync GitHub issues');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleTodoPress = (id: string, title: string) => {
+    Alert.alert(
+      'Complete Todo?',
+      `Mark "${title}" as complete?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Complete',
+          onPress: async () => {
+            try {
+              await completeTodo(id);
+            } catch {
+              alert('Failed to complete todo');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleAddTodo = async () => {
+    if (!newTodoTitle.trim()) {
+      alert('Please enter a title');
+      return;
+    }
+
+    try {
+      const newTodo: Todo = {
+        id: `personal-${Date.now()}`,
+        source: 'personal',
+        title: newTodoTitle.trim(),
+        description: newTodoDescription.trim() || undefined,
+        createdAt: new Date().toISOString(),
+        status: 'open',
+      };
+
+      await addTodo(newTodo);
+      setNewTodoTitle('');
+      setNewTodoDescription('');
+      setShowAddModal(false);
+    } catch {
+      alert('Failed to add todo');
+    }
+  };
+
+  if (loading) {
+    return (
+      <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
+        <ActivityIndicator size="large" />
+      </ThemedView>
+    );
+  }
+
+  if (error) {
+    return (
+      <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
+        <ThemedText>Error loading todos: {error.message}</ThemedText>
+      </ThemedView>
+    );
+  }
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={styles.header}>
+        <ThemedText type="title">Todos</ThemedText>
+        <TouchableOpacity onPress={handleSync} disabled={syncing || !isAuthenticated}>
+          <ThemedText type="link">{syncing ? 'Syncing...' : 'Sync'}</ThemedText>
+        </TouchableOpacity>
+      </View>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      {todos.length === 0 ? (
+        <View style={styles.emptyState}>
+          <ThemedText>No active todos</ThemedText>
+          {isAuthenticated && (
+            <ThemedText>Tap &quot;Sync GitHub&quot; to fetch your issues</ThemedText>
+          )}
+        </View>
+      ) : (
+        <FlatList
+          data={todos}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <View style={styles.todoItem}>
+              <TouchableOpacity
+                style={styles.checkbox}
+                onPress={() => handleTodoPress(item.id, item.title)}
+                activeOpacity={0.7}>
+                <View style={styles.checkboxCircle} />
+              </TouchableOpacity>
+              
+              <View style={styles.todoContent}>
+                <ThemedText type="defaultSemiBold">{item.title}</ThemedText>
+                {item.description && (
+                  <ThemedText style={styles.todoDescription} numberOfLines={2}>
+                    {item.description}
+                  </ThemedText>
+                )}
+                <View style={styles.todoMeta}>
+                  <ThemedText style={styles.metaText}>
+                    {item.source === 'github-issue' ? '🔗 GitHub' : '📝 Personal'}
+                  </ThemedText>
+                  {item.github && (
+                    <ThemedText style={styles.metaText}>
+                      {item.github.owner}/{item.github.repo}#{item.github.issueNumber}
+                    </ThemedText>
+                  )}
+                </View>
+              </View>
+            </View>
+          )}
+          contentContainerStyle={styles.listContent}
+        />
+      )}
+
+      <TouchableOpacity style={styles.addInputButton} onPress={() => setShowAddModal(true)}>
+        <ThemedText style={styles.addInputText}>+ Add a task</ThemedText>
+      </TouchableOpacity>
+
+      <Modal
+        visible={showAddModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowAddModal(false)}>
+        <View style={styles.modalOverlay}>
+          <ThemedView style={styles.modalContent}>
+            <ThemedText type="subtitle">Add New Todo</ThemedText>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Title"
+              value={newTodoTitle}
+              onChangeText={setNewTodoTitle}
+              autoFocus
+            />
+
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Description (optional)"
+              value={newTodoDescription}
+              onChangeText={setNewTodoDescription}
+              multiline
+              numberOfLines={4}
+            />
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.button, styles.buttonSecondary]}
+                onPress={() => {
+                  setShowAddModal(false);
+                  setNewTodoTitle('');
+                  setNewTodoDescription('');
+                }}>
+                <ThemedText>Cancel</ThemedText>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={[styles.button, styles.buttonPrimary]} onPress={handleAddTodo}>
+                <ThemedText style={styles.buttonPrimaryText}>Add Todo</ThemedText>
+              </TouchableOpacity>
+            </View>
+          </ThemedView>
+        </View>
+      </Modal>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+    padding: 20,
+  },
+  header: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
   },
-  stepContainer: {
+  listContent: {
     gap: 8,
-    marginBottom: 8,
+    paddingBottom: 80,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
+  todoItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  checkbox: {
+    marginRight: 12,
+    padding: 4,
+  },
+  checkboxCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#ccc',
+    backgroundColor: 'transparent',
+  },
+  todoContent: {
+    flex: 1,
+    gap: 4,
+  },
+  todoDescription: {
+    opacity: 0.7,
+    marginTop: 4,
+  },
+  todoMeta: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  metaText: {
+    fontSize: 12,
+    opacity: 0.5,
+  },
+  addInputButton: {
     position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  addInputText: {
+    fontSize: 16,
+    opacity: 0.5,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 400,
+    padding: 24,
+    borderRadius: 12,
+    gap: 16,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: '#fff',
+  },
+  textArea: {
+    height: 100,
+    textAlignVertical: 'top',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  button: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  buttonSecondary: {
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  buttonPrimary: {
+    backgroundColor: '#007AFF',
+  },
+  buttonPrimaryText: {
+    color: '#fff',
+    fontWeight: '600',
   },
 });

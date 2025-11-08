@@ -36,26 +36,29 @@ It combines personal todos, issue tracking, and time logging into a single app t
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node ≥ 18  
+- Node ≥ 22 (use `nvm use 22`)
 - Expo CLI  
-- GitHub account (personal access token for local dev)
+- GitHub account with personal access token
 
 ### Setup
 ```bash
 git clone https://github.com/hirro/syssla.git
 cd syssla
+nvm use 22
 npm install
 npx expo start
 ```
 
 Then open in the Expo app on your phone or web browser.
 
-### Configuration
-Create a `.env` file with your GitHub OAuth credentials:
-```env
-GITHUB_CLIENT_ID=your_client_id
-GITHUB_REDIRECT_URI=yourapp://callback
-```
+### Authentication
+1. Create a GitHub Personal Access Token at: https://github.com/settings/tokens
+2. Required scopes: `repo`, `user`, `read:org`
+3. Open the app and go to **Settings** tab
+4. Enter your token to authenticate
+5. Go to **Todos** tab and tap "Sync GitHub" to fetch your issues
+
+**Note:** For production use, implement proper OAuth flow. Current implementation uses personal access tokens for development.
 
 ---
 
