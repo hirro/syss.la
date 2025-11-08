@@ -1,0 +1,241 @@
+{
+  "$id": "https://syss.la/schema/storage-schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Syssla Storage Schema",
+  "description": "Schema defining data formats for all JSON files in the Syssla GitHub storage repository.",
+  "type": "object",
+  "$defs": {
+    "Todo": {
+      "type": "object",
+      "title": "Todo item",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "personal",
+            "github-issue"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "completedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "open",
+            "in-progress",
+            "blocked"
+          ]
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "dueDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "github": {
+          "type": "object",
+          "properties": {
+            "owner": {
+              "type": "string"
+            },
+            "repo": {
+              "type": "string"
+            },
+            "issueNumber": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "state": {
+              "type": "string",
+              "enum": [
+                "open",
+                "closed"
+              ]
+            },
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          "required": [
+            "owner",
+            "repo",
+            "issueNumber"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "source",
+        "title",
+        "createdAt"
+      ]
+    },
+    "Customer": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "invoiceRef": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ]
+    },
+    "Project": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "customerId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "customerId",
+        "name"
+      ]
+    },
+    "TimeEntry": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "start": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "end": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "durationMinutes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "projectId",
+        "start"
+      ]
+    },
+    "SchemaVersionFile": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string"
+        },
+        "migratedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "version"
+      ]
+    },
+    "ActiveTodosFile": {
+      "type": "array",
+      "items": {
+        "allOf": [
+          {
+            "$ref": "#/$defs/Todo"
+          },
+          {
+            "not": {
+              "required": [
+                "completedAt"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "CompletedTodosFile": {
+      "type": "array",
+      "items": {
+        "allOf": [
+          {
+            "$ref": "#/$defs/Todo"
+          },
+          {
+            "required": [
+              "completedAt"
+            ]
+          }
+        ]
+      }
+    },
+    "CustomersFile": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Customer"
+      }
+    },
+    "ProjectsFile": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Project"
+      }
+    },
+    "TimeEntriesFile": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/TimeEntry"
+      }
+    }
+  }
+}
