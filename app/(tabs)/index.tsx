@@ -8,7 +8,7 @@ import { fullSync } from '@/services/sync-service';
 import type { Todo } from '@/types/todo';
 import React, { useState } from 'react';
 import { Octicons, MaterialIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import {
   ActivityIndicator,
   Alert,
@@ -30,6 +30,14 @@ export default function TodosScreen() {
   const [newTodoTitle, setNewTodoTitle] = useState('');
   const [newTodoDescription, setNewTodoDescription] = useState('');
   const insets = useSafeAreaInsets();
+
+  // Refresh todos when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('📱 Todos screen focused, refreshing list...');
+      refresh();
+    }, [refresh])
+  );
   
   const cardBackground = useThemeColor({}, 'background');
 

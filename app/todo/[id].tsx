@@ -82,9 +82,13 @@ export default function TodoDetailScreen() {
             updatedAt: new Date().toISOString(),
           };
           
+          console.log('💾 Saving todo changes...');
           editTodo(updatedTodo).then(() => {
-            console.log('✅ Todo saved on navigation back:', updatedTodo);
-            // Don't auto-sync here - let user manually sync when they want
+            console.log('✅ Todo saved successfully:', {
+              id: updatedTodo.id,
+              title: updatedTodo.title,
+              updatedAt: updatedTodo.updatedAt
+            });
           }).catch(err => {
             console.error('❌ Failed to save todo:', err);
           });

@@ -11,11 +11,13 @@ export function useTodos() {
 
   const loadTodos = useCallback(async () => {
     try {
+      console.log('🔄 Loading todos from database...');
       setLoading(true);
       setError(null);
       await initDatabase();
       const activeTodos = await getActiveTodos();
       const completed = await getCompletedTodos();
+      console.log(`✅ Loaded ${activeTodos.length} active and ${completed.length} completed todos`);
       setTodos(activeTodos);
       setCompletedTodos(completed);
     } catch (err) {
