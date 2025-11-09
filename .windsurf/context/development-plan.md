@@ -15,16 +15,23 @@ All data is stored in the user’s **own GitHub repository** — private, versio
 
 ### Objectives
 - Set up Expo project structure
-- Implement GitHub authentication (OAuth PKCE)
+- Implement GitHub authentication (Personal Access Token)
 - Create local SQLite storage
 - Sync basic todos (personal + GitHub issues)
 - Render lists and detail views
 
+### Authentication Strategy
+- **Personal Access Token (PAT)** authentication
+- **Rationale:** Fine-grained permission control, no backend required, aligns with privacy-first architecture
+- Users maintain full control over token scopes and lifecycle
+- Required scopes: `repo` (for storage and issues)
+
 ### Deliverables
 - `app/` folder with base navigation and screens
-- GitHub API client
-- Local DB setup
+- GitHub API client with PAT authentication
+- Local DB setup (SQLite)
 - Active todo list + GitHub issue view
+- Login wizard with token setup instructions
 - LICENSE, README, schema, and coding style in repo
 
 ---
@@ -102,11 +109,11 @@ All data is stored in the user’s **own GitHub repository** — private, versio
 
 | Phase | Goal | Status |
 |-------|------|--------|
-| 1 | Core foundation | 🔜 |
-| 2 | Time tracking | ⏳ |
-| 3 | Wiki integration | ⏳ |
-| 4 | UX polish & sync | ⏳ |
-| 5 | Release & docs | ⏳ |
+| 1 | Core foundation | ✅ Complete |
+| 2 | Time tracking | 🔄 In Progress |
+| 3 | Wiki integration | ⏳ Pending |
+| 4 | UX polish & sync | ⏳ Pending |
+| 5 | Release & docs | ⏳ Pending |
 
 ---
 
