@@ -7,7 +7,7 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import { formatDuration, deleteTimeEntry, updateTimeEntry } from '@/lib/db/time-entries';
 import type { TimeEntry } from '@/types/time';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -19,9 +19,13 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useRouter } from 'expo-router';
+import { Accelerometer } from 'expo-sensors';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function TimerScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { customers } = useCustomers();
   const { activeTimer, elapsedTime, startTimer, stopTimer } = useTimer();
   const { entriesByDate, formatTotalDuration, refresh } = useTimeEntries();
@@ -211,6 +215,56 @@ export default function TimerScreen() {
 
   // Convert entriesByDate to sorted array
   const sortedDates = Array.from(entriesByDate.keys()).sort((a, b) => b.localeCompare(a));
+
+  // Flick detection using accelerometer
+  const lastFlickTime = useRef(0);
+  const hasNavigated = useRef(false);
+  const previousX = useRef(0);
+  const [flickEnabled, setFlickEnabled] = useState(true);
+
+  useEffect(() => {
+    const loadSetting = async () => {
+      try {
+        const enabled = await AsyncStorage.getItem('flick_navigation_enabled');
+        setFlickEnabled(enabled !== 'false'); // Default to true
+      } catch (error) {
+        console.error('Failed to load flick navigation setting:', error);
+      }
+    };
+    loadSetting();
+  }, []);
+
+  useEffect(() => {
+    if (!flickEnabled) return;
+
+    Accelerometer.setUpdateInterval(16); // ~60fps
+    
+    const subscription = Accelerometer.addListener((data) => {
+      const now = Date.now();
+      const timeDiff = now - lastFlickTime.current;
+      
+      // Calculate acceleration change (jerk) to detect sudden movements
+      const deltaX = data.x - previousX.current;
+      previousX.current = data.x;
+      
+      // Detect quick flick/snap (sudden acceleration change)
+      const FLICK_THRESHOLD = 0.5; // Sudden acceleration change threshold
+      const COOLDOWN = 1000; // 1 second cooldown between navigations
+      
+      if (timeDiff > COOLDOWN) {
+        hasNavigated.current = false;
+      }
+      
+      if (!hasNavigated.current && Math.abs(deltaX) > FLICK_THRESHOLD) {
+        // Any flick -> toggle to todos
+        hasNavigated.current = true;
+        lastFlickTime.current = now;
+        router.push('/');
+      }
+    });
+
+    return () => subscription.remove();
+  }, [router, flickEnabled]);
 
   return (
     <ThemedView style={[styles.container, { paddingTop: insets.top }]}>

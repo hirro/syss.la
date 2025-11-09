@@ -9,7 +9,7 @@ import type { Customer } from '@/types/time';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Modal, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, ScrollView, StyleSheet, Switch, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SettingsScreen() {
@@ -21,6 +21,7 @@ export default function SettingsScreen() {
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [customerName, setCustomerName] = useState('');
+  const [flickNavigationEnabled, setFlickNavigationEnabled] = useState(true);
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
@@ -40,6 +41,29 @@ export default function SettingsScreen() {
     };
     loadUserData();
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const enabled = await AsyncStorage.getItem('flick_navigation_enabled');
+        if (enabled !== null) {
+          setFlickNavigationEnabled(enabled === 'true');
+        }
+      } catch (error) {
+        console.error('Failed to load flick navigation setting:', error);
+      }
+    };
+    loadSettings();
+  }, []);
+
+  const handleToggleFlickNavigation = async (value: boolean) => {
+    try {
+      await AsyncStorage.setItem('flick_navigation_enabled', value.toString());
+      setFlickNavigationEnabled(value);
+    } catch (error) {
+      console.error('Failed to save flick navigation setting:', error);
+    }
+  };
 
   const handleLogout = async () => {
     Alert.alert(
@@ -203,6 +227,24 @@ export default function SettingsScreen() {
                 </View>
               ))
             )}
+          </View>
+        </View>
+
+        <View style={styles.card}>
+          <ThemedText type="subtitle" style={styles.cardTitle}>Navigation</ThemedText>
+          <View style={styles.cardContent}>
+            <View style={styles.settingRow}>
+              <View style={styles.settingInfo}>
+                <ThemedText style={styles.settingLabel}>Flick Navigation</ThemedText>
+                <ThemedText style={styles.settingDescription}>
+                  Quickly flick your device to switch between Todos and Timer tabs
+                </ThemedText>
+              </View>
+              <Switch
+                value={flickNavigationEnabled}
+                onValueChange={handleToggleFlickNavigation}
+              />
+            </View>
           </View>
         </View>
 
@@ -377,5 +419,23 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: '#FFFFFF',
     fontWeight: '600',
+  },
+  settingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 16,
+  },
+  settingInfo: {
+    flex: 1,
+  },
+  settingLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  settingDescription: {
+    fontSize: 14,
+    opacity: 0.7,
   },
 });

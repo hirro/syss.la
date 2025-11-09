@@ -6,7 +6,7 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import { syncGitHubIssues } from '@/services/github/issues';
 import { fullSync } from '@/services/sync-service';
 import type { Todo } from '@/types/todo';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Octicons, MaterialIcons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import {
@@ -20,6 +20,8 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Accelerometer } from 'expo-sensors';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function TodosScreen() {
   const router = useRouter();
@@ -30,6 +32,56 @@ export default function TodosScreen() {
   const [newTodoTitle, setNewTodoTitle] = useState('');
   const [newTodoDescription, setNewTodoDescription] = useState('');
   const insets = useSafeAreaInsets();
+
+  // Flick detection using accelerometer (must be before any returns)
+  const lastFlickTime = useRef(0);
+  const hasNavigated = useRef(false);
+  const previousX = useRef(0);
+  const [flickEnabled, setFlickEnabled] = useState(true);
+
+  useEffect(() => {
+    const loadSetting = async () => {
+      try {
+        const enabled = await AsyncStorage.getItem('flick_navigation_enabled');
+        setFlickEnabled(enabled !== 'false'); // Default to true
+      } catch (error) {
+        console.error('Failed to load flick navigation setting:', error);
+      }
+    };
+    loadSetting();
+  }, []);
+
+  useEffect(() => {
+    if (!flickEnabled) return;
+
+    Accelerometer.setUpdateInterval(16); // ~60fps
+    
+    const subscription = Accelerometer.addListener((data) => {
+      const now = Date.now();
+      const timeDiff = now - lastFlickTime.current;
+      
+      // Calculate acceleration change (jerk) to detect sudden movements
+      const deltaX = data.x - previousX.current;
+      previousX.current = data.x;
+      
+      // Detect quick flick/snap (sudden acceleration change)
+      const FLICK_THRESHOLD = 0.5; // Sudden acceleration change threshold
+      const COOLDOWN = 1000; // 1 second cooldown between navigations
+      
+      if (timeDiff > COOLDOWN) {
+        hasNavigated.current = false;
+      }
+      
+      if (!hasNavigated.current && Math.abs(deltaX) > FLICK_THRESHOLD) {
+        // Any flick -> toggle to timer
+        hasNavigated.current = true;
+        lastFlickTime.current = now;
+        router.push('/timer');
+      }
+    });
+
+    return () => subscription.remove();
+  }, [router, flickEnabled]);
 
   // Refresh todos when screen comes into focus
   useFocusEffect(
