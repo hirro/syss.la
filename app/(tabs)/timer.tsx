@@ -129,7 +129,12 @@ export default function TimerScreen() {
   };
 
   const handleStartDateChange = (event: any, selectedDate?: Date) => {
-    setShowStartDatePicker(false);
+    // On iOS, only hide picker when user cancels (event.type === 'dismissed')
+    if (event.type === 'dismissed') {
+      setShowStartDatePicker(false);
+      return;
+    }
+    
     if (selectedDate && editingEntry) {
       const currentStart = new Date(editingEntry.start);
       const newStart = new Date(
@@ -142,10 +147,16 @@ export default function TimerScreen() {
       );
       setEditingEntry({ ...editingEntry, start: newStart.toISOString() });
     }
+    setShowStartDatePicker(false);
   };
 
   const handleStartTimeChange = (event: any, selectedTime?: Date) => {
-    setShowStartTimePicker(false);
+    // On iOS, only hide picker when user cancels (event.type === 'dismissed')
+    if (event.type === 'dismissed') {
+      setShowStartTimePicker(false);
+      return;
+    }
+    
     if (selectedTime && editingEntry) {
       const currentStart = new Date(editingEntry.start);
       const newStart = new Date(
@@ -158,10 +169,16 @@ export default function TimerScreen() {
       );
       setEditingEntry({ ...editingEntry, start: newStart.toISOString() });
     }
+    setShowStartTimePicker(false);
   };
 
   const handleEndDateChange = (event: any, selectedDate?: Date) => {
-    setShowEndDatePicker(false);
+    // On iOS, only hide picker when user cancels (event.type === 'dismissed')
+    if (event.type === 'dismissed') {
+      setShowEndDatePicker(false);
+      return;
+    }
+    
     if (selectedDate && editingEntry && editingEntry.end) {
       const currentEnd = new Date(editingEntry.end);
       const newEnd = new Date(
@@ -174,10 +191,16 @@ export default function TimerScreen() {
       );
       setEditingEntry({ ...editingEntry, end: newEnd.toISOString() });
     }
+    setShowEndDatePicker(false);
   };
 
   const handleEndTimeChange = (event: any, selectedTime?: Date) => {
-    setShowEndTimePicker(false);
+    // On iOS, only hide picker when user cancels (event.type === 'dismissed')
+    if (event.type === 'dismissed') {
+      setShowEndTimePicker(false);
+      return;
+    }
+    
     if (selectedTime && editingEntry) {
       const currentEnd = editingEntry.end ? new Date(editingEntry.end) : new Date();
       const newEnd = new Date(
@@ -190,6 +213,7 @@ export default function TimerScreen() {
       );
       setEditingEntry({ ...editingEntry, end: newEnd.toISOString() });
     }
+    setShowEndTimePicker(false);
   };
 
 
@@ -551,12 +575,12 @@ export default function TimerScreen() {
               </TouchableOpacity>
             </ScrollView>
 
-            {/* Date/Time Pickers */}
+            {/* Date/Time Pickers - iOS will show as modal overlay */}
             {showStartDatePicker && (
               <DateTimePicker
                 value={new Date(editingEntry.start)}
                 mode="date"
-                display="default"
+                display="spinner"
                 onChange={handleStartDateChange}
               />
             )}
@@ -564,7 +588,7 @@ export default function TimerScreen() {
               <DateTimePicker
                 value={new Date(editingEntry.start)}
                 mode="time"
-                display="default"
+                display="spinner"
                 onChange={handleStartTimeChange}
               />
             )}
@@ -572,7 +596,7 @@ export default function TimerScreen() {
               <DateTimePicker
                 value={new Date(editingEntry.end)}
                 mode="date"
-                display="default"
+                display="spinner"
                 onChange={handleEndDateChange}
               />
             )}
@@ -580,7 +604,7 @@ export default function TimerScreen() {
               <DateTimePicker
                 value={editingEntry.end ? new Date(editingEntry.end) : new Date()}
                 mode="time"
-                display="default"
+                display="spinner"
                 onChange={handleEndTimeChange}
               />
             )}
