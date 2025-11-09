@@ -3,6 +3,7 @@ import { ThemedView } from '@/components/themed-view';
 import { useTimer } from '@/hooks/use-timer';
 import { useTimeEntries } from '@/hooks/use-time-entries';
 import { useCustomers } from '@/hooks/use-customers';
+import { useThemeColor } from '@/hooks/use-theme-color';
 import { formatDuration, deleteTimeEntry, updateTimeEntry } from '@/lib/db/time-entries';
 import type { TimeEntry } from '@/types/time';
 import { useState } from 'react';
@@ -23,11 +24,12 @@ export default function TimerScreen() {
   const { customers } = useCustomers();
   const { activeTimer, elapsedTime, startTimer, stopTimer } = useTimer();
   const { entriesByDate, formatTotalDuration, refresh } = useTimeEntries();
+  const primaryColor = useThemeColor({}, 'primary');
   
-  const [note, setNote] = useState('');
   const [showCustomerPicker, setShowCustomerPicker] = useState(false);
   const [showNoteEditor, setShowNoteEditor] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+  const [note, setNote] = useState('');
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
   const [showEntryEditor, setShowEntryEditor] = useState(false);
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
@@ -271,7 +273,7 @@ export default function TimerScreen() {
       </ScrollView>
 
       {/* Active Timer Bar (Bottom) */}
-      {activeTimer ? (
+      {activeTimer && (
         <View style={styles.activeTimerBar}>
           <View style={styles.activeTimerBarContent}>
             <View style={styles.activeTimerBarInfo}>
@@ -290,29 +292,15 @@ export default function TimerScreen() {
             </TouchableOpacity>
           </View>
         </View>
-      ) : (
-        /* Bottom Input Bar */
-        <View style={styles.inputBar}>
-          <TouchableOpacity
-            style={styles.input}
-            onPress={() => setShowNoteEditor(true)}>
-            <ThemedText style={styles.inputPlaceholder}>
-              {note || "I'm working on..."}
-            </ThemedText>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.startButton}
-            onPress={() => {
-              if (!selectedCustomerId) {
-                Alert.alert('Select Customer', 'Please select a customer first');
-                setShowNoteEditor(true);
-              } else {
-                handleStartTimer(selectedCustomerId);
-              }
-            }}>
-            <ThemedText style={styles.startButtonText}>▶</ThemedText>
-          </TouchableOpacity>
-        </View>
+      )}
+
+      {/* Floating Action Button */}
+      {!activeTimer && (
+        <TouchableOpacity
+          style={[styles.fab, { backgroundColor: primaryColor }]}
+          onPress={() => setShowNoteEditor(true)}>
+          <ThemedText style={styles.fabIcon}>▶</ThemedText>
+        </TouchableOpacity>
       )}
 
       {/* Note Editor Modal */}
@@ -688,38 +676,28 @@ const styles = StyleSheet.create({
     fontSize: 14,
     opacity: 0.6,
   },
-  inputBar: {
-    flexDirection: 'row',
-    padding: 16,
-    gap: 12,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0, 0, 0, 0.1)',
-  },
-  input: {
-    flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 24,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    justifyContent: 'center',
-  },
-  inputPlaceholder: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.7)',
-  },
-  startButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#9333EA',
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 20,
+    width: 64,
+    height: 64,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
-  startButtonText: {
+  fabIcon: {
+    fontSize: 28,
     color: '#FFFFFF',
-    fontSize: 24,
+    marginLeft: 3,
   },
   modalOverlay: {
     flex: 1,
