@@ -1,14 +1,14 @@
 import * as AuthSession from 'expo-auth-session';
-import * as WebBrowser from 'expo-web-browser';
 import * as Crypto from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
+import * as WebBrowser from 'expo-web-browser';
 
 WebBrowser.maybeCompleteAuthSession();
 
 // GitHub OAuth configuration
 const GITHUB_CLIENT_ID = 'YOUR_GITHUB_CLIENT_ID'; // TODO: Replace with actual client ID
 const REDIRECT_URI = AuthSession.makeRedirectUri({
-  scheme: 'syssla',
+  scheme: 'syss.la',
   path: 'auth/callback',
 });
 

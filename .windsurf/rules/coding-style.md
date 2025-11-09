@@ -1,6 +1,6 @@
-# Syssla Coding Style Guide
+# syss.la Coding Style Guide
 
-This document defines conventions for the **Syssla** project.  
+This document defines conventions for the **syss.la** project.  
 It ensures consistency across React Native (Expo), TypeScript, and backend service code.
 
 ---
@@ -139,4 +139,4 @@ refactor(time): simplify project duration calculation
 
 ---
 
-**Syssla Style — clarity, consistency, composure.**
+**syss.la Style — clarity, consistency, composure.**

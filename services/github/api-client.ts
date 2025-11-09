@@ -1,6 +1,6 @@
 import { Octokit } from '@octokit/rest';
-import { getAuthState } from './auth';
 import { Buffer } from 'buffer';
+import { getAuthState } from './auth';
 
 let octokitInstance: Octokit | null = null;
 let currentToken: string | null = null;
@@ -15,7 +15,7 @@ export async function getOctokit(): Promise<Octokit> {
   if (!octokitInstance || currentToken !== token) {
     octokitInstance = new Octokit({
       auth: token,
-      userAgent: 'Syssla v1.0.0',
+      userAgent: 'syss.la v1.0.0',
     });
     currentToken = token;
   }

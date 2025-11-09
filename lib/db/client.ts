@@ -8,7 +8,7 @@ export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
     return db;
   }
 
-  db = await SQLite.openDatabaseAsync('syssla.db');
+  db = await SQLite.openDatabaseAsync('syss.la.db');
 
   // Create tables
   await db.execAsync(CREATE_TABLES);

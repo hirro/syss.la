@@ -1,8 +1,8 @@
 {
   "$id": "https://syss.la/schema/storage-schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Syssla Storage Schema",
-  "description": "Schema defining data formats for all JSON files in the Syssla GitHub storage repository.",
+  "title": "syss.la Storage Schema",
+  "description": "Schema defining data formats for all JSON files in the syss.la GitHub storage repository.",
   "type": "object",
   "$defs": {
     "Todo": {

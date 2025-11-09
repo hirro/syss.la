@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "syssla",
+    "name": "syss.la",
     "slug": "syssla",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "syssla",
+    "scheme": "syss.la",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -43,6 +43,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "01bfd674-d870-4ffc-a346-7692ceee8290"
+      }
+    },
+    "owner": "arnell-consulting-ab"
   }
 }

@@ -1,6 +1,6 @@
-# Syssla License
+# syss.la License
 
-**Syssla – tasks, notes & time for developers**  
+**syss.la – tasks, notes & time for developers**  
 Copyright (c) 2025 [Jim Arnell](https://github.com/hirro)
 
 ---
@@ -25,22 +25,22 @@ SPDX Identifier: `AGPL-3.0-or-later`
 
 ---
 
-## 2. Syssla Commercial License
+## 2. syss.la Commercial License
 
-If you would like to use **Syssla** in a **closed-source, commercial, or embedded product**  
+If you would like to use **syss.la** in a **closed-source, commercial, or embedded product**  
 without the requirements of the AGPL, you may purchase a commercial license.
 
 Commercial licensing terms are available upon request:  
 **contact@syss.la** *(or future project contact email)*
 
-SPDX Identifier: `LicenseRef-Syssla-Commercial`
+SPDX Identifier: `LicenseRef-syss.la-Commercial`
 
 ---
 
 ## Summary
 
 - Free for open-source and personal use under AGPL-3.0.  
-- Commercial use requires a Syssla Commercial License.  
+- Commercial use requires a syss.la Commercial License.  
 - All other rights reserved by the copyright holder.
 
 ---

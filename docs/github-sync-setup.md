@@ -2,7 +2,7 @@
 
 ## Overview
 
-Syssla now supports bidirectional sync with your GitHub repository, storing your todos as JSON files that you can view and edit directly on GitHub.
+syss.la now supports bidirectional sync with your GitHub repository, storing your todos as JSON files that you can view and edit directly on GitHub.
 
 ## How It Works
 

@@ -2,17 +2,19 @@ import { Stack } from 'expo-router';
 
 export default function TodoLayout() {
   return (
-    <Stack>
-      <Stack.Screen
-        name="[id]"
-        options={{
-          headerShown: true,
-          headerTitle: '',
-          headerBackTitle: 'Back',
-          presentation: 'card',
-          headerShadowVisible: false,
-        }}
-      />
+    <Stack
+      screenOptions={{
+        headerShown: true,
+        headerTitle: '',
+        headerBackTitle: 'Home',
+        presentation: 'card',
+        headerShadowVisible: false,
+        headerStyle: {
+          backgroundColor: 'transparent',
+        },
+        headerTransparent: false,
+      }}>
+      <Stack.Screen name="[id]" />
     </Stack>
   );
 }

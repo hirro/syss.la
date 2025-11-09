@@ -1,4 +1,4 @@
-# Syssla
+# syss.la
 
 > **Tasks, notes & time for developers**  
 > A personal productivity app that integrates your GitHub issues, todos, wiki, and time tracking — all synced through your own GitHub account.
@@ -7,7 +7,7 @@
 
 ## 🌟 Overview
 
-**Syssla** helps developers manage work the way they already do — in GitHub.  
+**syss.la** helps developers manage work the way they already do — in GitHub.  
 It combines personal todos, issue tracking, and time logging into a single app that works across **iOS, Android, and Web** (built with Expo).
 
 ### Key Features
@@ -42,8 +42,8 @@ It combines personal todos, issue tracking, and time logging into a single app t
 
 ### Setup
 ```bash
-git clone https://github.com/hirro/syssla.git
-cd syssla
+git clone https://github.com/hirro/syss.la.git
+cd syss.la
 nvm use 22
 npm install
 npx expo start
@@ -64,7 +64,7 @@ Then open in the Expo app on your phone or web browser.
 
 ## 🗄️ Data Storage Format
 
-Syssla stores your todos, time entries, and other data in your **personal GitHub repo**, for example:
+syss.la stores your todos, time entries, and other data in your **personal GitHub repo**, for example:
 
 ```
 /todos/active.json
@@ -81,13 +81,13 @@ Files are small, human-readable JSON, easy to browse or version in GitHub.
 
 ## 🔒 License
 
-Syssla is **dual-licensed** under:
+syss.la is **dual-licensed** under:
 
 - [AGPL-3.0](https://www.gnu.org/licenses/agpl-3.0.html) for open use  
 - A [commercial license](./COMMERCIAL_LICENSE.txt) for closed-source or embedded applications  
 
 ```
-SPDX-License-Identifier: AGPL-3.0-or-later OR LicenseRef-Syssla-Commercial
+SPDX-License-Identifier: AGPL-3.0-or-later OR LicenseRef-syss.la-Commercial
 ```
 
 © 2025 [Jim Arnell](https://github.com/hirro)
@@ -99,7 +99,7 @@ For commercial inquiries: **contact@syss.la**
 ## 🤝 Contributing
 
 Contributions are welcome under the AGPL-3.0 license.  
-Please open issues or pull requests via [GitHub](https://github.com/hirro/syssla).
+Please open issues or pull requests via [GitHub](https://github.com/hirro/syss.la).
 
 Before submitting PRs:
 - Follow the established code style and TypeScript conventions.  
@@ -119,9 +119,9 @@ Before submitting PRs:
 
 ## 🩵 About
 
-**Syssla** means *“to occupy oneself with something”* in Swedish —  
+**syss.la** means *“to occupy oneself with something”* in Swedish —  
 the perfect word for a developer’s personal workspace.
 
 ---
 
-**Syssla** — *do things your way.*
+**syss.la** — *do things your way.*

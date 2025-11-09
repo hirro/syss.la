@@ -1,4 +1,4 @@
-# Syssla Development Plan
+# syss.la Development Plan
 
 ## 🎯 Goal
 Create a cross-platform productivity app for developers that combines:
@@ -112,4 +112,4 @@ All data is stored in the user’s **own GitHub repository** — private, versio
 
 **Maintainer:** [Jim Arnell](https://github.com/hirro)  
 **Project:** [syss.la](https://github.com/hirro/syss.la)  
-**License:** AGPL-3.0 or Syssla Commercial
+**License:** AGPL-3.0 or syss.la Commercial

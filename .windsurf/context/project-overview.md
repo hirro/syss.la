@@ -1,8 +1,8 @@
-# Syssla – Project Overview
+# syss.la – Project Overview
 
 ## 🧭 Vision
 
-Syssla is a developer-focused productivity app that merges **personal task management**, **GitHub issue tracking**, **time logging**, and **wiki access** into one cohesive workspace.
+syss.la is a developer-focused productivity app that merges **personal task management**, **GitHub issue tracking**, **time logging**, and **wiki access** into one cohesive workspace.
 
 The app’s goal is to simplify a developer’s daily workflow by using **GitHub as the single source of truth** — storing all data (todos, logs, and notes) in a personal repository owned by the user.
 
@@ -10,7 +10,7 @@ The app’s goal is to simplify a developer’s daily workflow by using **GitHub
 
 ## 🌍 Key Concepts
 
-- **Privacy-first:** All user data is stored in the user’s GitHub account, not Syssla’s servers.
+- **Privacy-first:** All user data is stored in the user’s GitHub account, not syss.la’s servers.
 - **Cross-platform:** Built with **Expo** (React Native), works on iOS, Android, and Web.
 - **Offline-aware:** Local SQLite database for caching and search.
 - **Extensible:** Future support for additional integrations and plugins.
@@ -38,7 +38,7 @@ The app’s goal is to simplify a developer’s daily workflow by using **GitHub
 ## 📁 Repository Structure
 
 ```
-syssla/
+syss.la/
  ├─ app/                     # Expo app source (TypeScript)
  ├─ docs/                    # Schemas, documentation
  │   └─ storage-schema.json
@@ -79,21 +79,21 @@ Data is structured, versioned, and readable directly on GitHub.
 
 ## 🔒 Licensing
 
-Syssla is **dual-licensed**:
+syss.la is **dual-licensed**:
 
 - **AGPL-3.0** for open-source and personal use.  
 - **Commercial License** for closed-source redistribution.
 
 SPDX identifier:
 ```
-AGPL-3.0-or-later OR LicenseRef-Syssla-Commercial
+AGPL-3.0-or-later OR LicenseRef-syss.la-Commercial
 ```
 
 ---
 
 ## 💡 Branding
 
-- **Name:** Syssla  
+- **Name:** syss.la  
 - **Domain:** syss.la  
 - **Meaning:** “To occupy oneself with something” (Swedish)  
 - **Aesthetic:** Nordic minimalism; simple, calm, and developer-centric.  
@@ -108,5 +108,5 @@ AGPL-3.0-or-later OR LicenseRef-Syssla-Commercial
 
 ---
 
-This document defines the context for Syssla to guide AI-assisted development tools (e.g., Windsurf AI).  
+This document defines the context for syss.la to guide AI-assisted development tools (e.g., Windsurf AI).  
 It provides the background, structure, and goals necessary to maintain project alignment across contributors and automated systems.

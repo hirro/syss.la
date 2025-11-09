@@ -351,12 +351,6 @@ export default function TodoDetailScreen() {
           </View>
         )}
 
-        <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Source</ThemedText>
-          <ThemedText>
-            {todo.source === 'github-issue' ? '🔗 GitHub Issue' : '📝 Personal Todo'}
-          </ThemedText>
-        </View>
 
         {todo.completedAt && (
           <View style={styles.section}>
@@ -445,7 +439,7 @@ export default function TodoDetailScreen() {
                 }
               }}>
               <ThemedText style={styles.openGitHubButtonText}>
-                Open in GitHub
+                Open in GitHub client
               </ThemedText>
             </TouchableOpacity>
           </View>
@@ -474,7 +468,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingTop: 0,
+    paddingTop: 16,
     paddingBottom: 20,
   },
   centered: {
@@ -636,15 +630,16 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   openGitHubButton: {
-    marginTop: 12,
-    backgroundColor: '#24292e',
+    backgroundColor: '#007AFF',
     padding: 12,
     borderRadius: 8,
     alignItems: 'center',
+    marginTop: 12,
   },
   openGitHubButtonText: {
-    color: '#007AFF',
-    fontSize: 14,
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
   reopenButton: {
     marginTop: 12,

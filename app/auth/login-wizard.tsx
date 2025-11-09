@@ -1,14 +1,14 @@
-import { StyleSheet, TextInput, TouchableOpacity, View, ScrollView, ActivityIndicator } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useAuth } from '@/hooks/use-auth';
-import { useState } from 'react';
-import { getCurrentUser, listUserRepos } from '@/services/github/api-client';
-import { setSyncConfig, fullSync } from '@/services/sync-service';
-import { useRouter } from 'expo-router';
 import { clearAllTodos } from '@/lib/db/todos';
+import { getCurrentUser, listUserRepos } from '@/services/github/api-client';
 import { syncGitHubIssues } from '@/services/github/issues';
+import { fullSync, setSyncConfig } from '@/services/sync-service';
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface Repository {
   name: string;
@@ -220,7 +220,7 @@ export default function LoginWizardScreen() {
                 2. Click &quot;Generate new token&quot; → &quot;Generate new token (classic)&quot;
               </ThemedText>
               <ThemedText style={styles.instructionStep}>
-                3. Give it a name (e.g., &quot;Syssla App&quot;)
+                3. Give it a name (e.g., &quot;syss.la App&quot;)
               </ThemedText>
               <ThemedText style={styles.instructionStep}>
                 4. Select scopes: <ThemedText style={styles.bold}>repo</ThemedText> (required)

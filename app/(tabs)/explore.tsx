@@ -1,14 +1,14 @@
-import { StyleSheet, TouchableOpacity, View, ScrollView, Alert } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useAuth } from '@/hooks/use-auth';
-import { useState, useEffect } from 'react';
+import { clearAllTodos } from '@/lib/db/todos';
 import { getCurrentUser } from '@/services/github/api-client';
 import { getSyncConfig } from '@/services/sync-service';
-import { useRouter } from 'expo-router';
-import { clearAllTodos } from '@/lib/db/todos';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SettingsScreen() {
   const { isAuthenticated, logout } = useAuth();
@@ -105,7 +105,7 @@ export default function SettingsScreen() {
 
         <View style={styles.section}>
           <ThemedText type="subtitle">About</ThemedText>
-          <ThemedText>Syssla v1.0.0</ThemedText>
+          <ThemedText>syss.la v1.0.0</ThemedText>
           <ThemedText>A developer productivity app</ThemedText>
         </View>
       </ThemedView>
