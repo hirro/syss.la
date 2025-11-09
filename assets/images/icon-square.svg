@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <style>
+      .bg { fill: #e86f1d; }
+      .mask {
+        rx: 220px;
+        ry: 220px;
+      }
+      .icon-stroke {
+        fill: none;
+        stroke: #ffffff;
+        stroke-width: 36;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .text {
+        fill: #ffffff;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-weight: 700;
+        font-size: 240px;
+      }
+    </style>
+    <!-- Rounded rectangle mask for preview -->
+    <mask id="rounded">
+      <rect class="mask" width="1024" height="1024" fill="white"/>
+    </mask>
+  </defs>
+
+  <g mask="url(#rounded)">
+    <rect class="bg" width="1024" height="1024"/>
+    <rect class="icon-stroke" x="200" y="220" width="240" height="240" rx="40" ry="40"/>
+    <polyline class="icon-stroke" points="240,340 300,420 380,280"/>
+    <text class="text" x="220" y="740">syss.la</text>
+  </g>
+</svg>

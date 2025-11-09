@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <style>
+      .circle { fill: #e86f1d; }
+      .text {
+        fill: #ffffff;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-weight: 700;
+        font-size: 120px;
+      }
+      .icon-stroke {
+        fill: none;
+        stroke: #ffffff;
+        stroke-width: 18;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+    </style>
+  </defs>
+
+  <!-- orange circle -->
+  <circle class="circle" cx="256" cy="256" r="240"/>
+
+  <!-- checkbox icon -->
+  <rect class="icon-stroke" x="90" y="120" width="120" height="120" rx="24" ry="24"/>
+  <polyline class="icon-stroke" points="112,182 148,222 188,158"/>
+
+  <!-- syss.la text -->
+  <text class="text" x="90" y="350">syss.la</text>
+</svg>
