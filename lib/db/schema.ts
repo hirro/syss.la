@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export const CREATE_TABLES = `
 -- Todos table
@@ -28,6 +28,7 @@ CREATE INDEX IF NOT EXISTS idx_todos_completed ON todos(completed_at);
 CREATE TABLE IF NOT EXISTS customers (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
+  archived INTEGER DEFAULT 0,
   invoice_ref TEXT,
   notes TEXT
 );
@@ -64,3 +65,8 @@ CREATE TABLE IF NOT EXISTS metadata (
   value TEXT NOT NULL
 );
 `;
+
+export const MIGRATIONS = [
+  // Migration 1 to 2: Add archived column to customers
+  `ALTER TABLE customers ADD COLUMN archived INTEGER DEFAULT 0;`,
+];

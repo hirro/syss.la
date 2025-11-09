@@ -1,6 +1,7 @@
 export interface Customer {
   id: string;
   name: string;
+  archived?: boolean;
   invoiceRef?: string;
   notes?: string;
 }

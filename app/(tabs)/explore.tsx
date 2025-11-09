@@ -1,20 +1,26 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useAuth } from '@/hooks/use-auth';
+import { useCustomers } from '@/hooks/use-customers';
 import { clearAllTodos } from '@/lib/db/todos';
 import { getCurrentUser } from '@/services/github/api-client';
 import { getSyncConfig } from '@/services/sync-service';
+import type { Customer } from '@/types/time';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SettingsScreen() {
   const { isAuthenticated, logout } = useAuth();
+  const { customers, addCustomer, editCustomer, archiveCustomer } = useCustomers();
   const router = useRouter();
   const [username, setUsername] = useState('');
   const [syncRepo, setSyncRepo] = useState('');
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [customerName, setCustomerName] = useState('');
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
@@ -69,6 +75,67 @@ export default function SettingsScreen() {
     router.push('/auth/login-wizard');
   };
 
+  const handleAddCustomer = () => {
+    setEditingCustomer(null);
+    setCustomerName('');
+    setShowCustomerModal(true);
+  };
+
+  const handleEditCustomer = (customer: Customer) => {
+    setEditingCustomer(customer);
+    setCustomerName(customer.name);
+    setShowCustomerModal(true);
+  };
+
+  const handleSaveCustomer = async () => {
+    if (!customerName.trim()) {
+      alert('Please enter a customer name');
+      return;
+    }
+
+    try {
+      if (editingCustomer) {
+        await editCustomer({
+          ...editingCustomer,
+          name: customerName.trim(),
+        });
+      } else {
+        await addCustomer({
+          id: Date.now().toString(),
+          name: customerName.trim(),
+        });
+      }
+      setShowCustomerModal(false);
+      setCustomerName('');
+      setEditingCustomer(null);
+    } catch (error) {
+      console.error('Failed to save customer:', error);
+      alert('Failed to save customer');
+    }
+  };
+
+  const handleArchiveCustomer = (customer: Customer) => {
+    Alert.alert(
+      'Archive Customer',
+      `Are you sure you want to archive "${customer.name}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Archive',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await archiveCustomer(customer.id);
+            } catch (error) {
+              console.error('Failed to archive customer:', error);
+              alert('Failed to archive customer');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingTop: insets.top }}>
       <ThemedView style={styles.content}>
@@ -104,11 +171,82 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <ThemedText type="subtitle">Customers</ThemedText>
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={handleAddCustomer}>
+              <ThemedText style={styles.addButtonText}>+ Add</ThemedText>
+            </TouchableOpacity>
+          </View>
+          
+          {customers.length === 0 ? (
+            <ThemedText style={styles.emptyText}>No customers yet</ThemedText>
+          ) : (
+            customers.map((customer) => (
+              <View key={customer.id} style={styles.customerItem}>
+                <View style={styles.customerInfo}>
+                  <ThemedText style={styles.customerName}>{customer.name}</ThemedText>
+                </View>
+                <View style={styles.customerActions}>
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => handleEditCustomer(customer)}>
+                    <ThemedText style={styles.actionButtonText}>Edit</ThemedText>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.archiveButton]}
+                    onPress={() => handleArchiveCustomer(customer)}>
+                    <ThemedText style={styles.actionButtonText}>Archive</ThemedText>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))
+          )}
+        </View>
+
+        <View style={styles.section}>
           <ThemedText type="subtitle">About</ThemedText>
           <ThemedText>syss.la v1.0.0</ThemedText>
           <ThemedText>A developer productivity app</ThemedText>
         </View>
       </ThemedView>
+
+      {/* Customer Modal */}
+      <Modal
+        visible={showCustomerModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowCustomerModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <ThemedText type="subtitle" style={styles.modalTitle}>
+              {editingCustomer ? 'Edit Customer' : 'Add Customer'}
+            </ThemedText>
+            
+            <TextInput
+              style={styles.input}
+              placeholder="Customer name"
+              value={customerName}
+              onChangeText={setCustomerName}
+              autoFocus
+            />
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setShowCustomerModal(false)}>
+                <ThemedText>Cancel</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.saveButton]}
+                onPress={handleSaveCustomer}>
+                <ThemedText style={styles.saveButtonText}>Save</ThemedText>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -132,5 +270,103 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: 'rgba(0, 122, 255, 0.1)',
     alignItems: 'center',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  addButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#007AFF',
+    borderRadius: 6,
+  },
+  addButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  emptyText: {
+    opacity: 0.6,
+    fontStyle: 'italic',
+  },
+  customerItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: 'rgba(0, 122, 255, 0.05)',
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  customerInfo: {
+    flex: 1,
+  },
+  customerName: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  customerActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  actionButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#007AFF',
+    borderRadius: 6,
+  },
+  archiveButton: {
+    backgroundColor: '#FF3B30',
+  },
+  actionButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 24,
+    width: '80%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    marginBottom: 16,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#CCCCCC',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    marginBottom: 16,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#F0F0F0',
+  },
+  saveButton: {
+    backgroundColor: '#007AFF',
+  },
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
 });
