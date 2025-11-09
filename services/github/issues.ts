@@ -5,13 +5,33 @@ import { insertTodo, updateTodo, getTodoById } from '@/lib/db/todos';
 export async function fetchUserIssues(): Promise<Todo[]> {
   const octokit = await getOctokit();
   
-  // Fetch both open and closed issues
-  const { data: issues } = await octokit.issues.listForAuthenticatedUser({
-    filter: 'assigned',
-    state: 'all',
-    sort: 'updated',
-    per_page: 100,
+  // Fetch both assigned and created issues
+  const [assignedResponse, createdResponse] = await Promise.all([
+    octokit.issues.listForAuthenticatedUser({
+      filter: 'assigned',
+      state: 'all',
+      sort: 'updated',
+      per_page: 100,
+    }),
+    octokit.issues.listForAuthenticatedUser({
+      filter: 'created',
+      state: 'all',
+      sort: 'updated',
+      per_page: 100,
+    }),
+  ]);
+
+  // Combine and deduplicate issues
+  const issueMap = new Map();
+  [...assignedResponse.data, ...createdResponse.data].forEach(issue => {
+    const key = `${issue.repository_url}-${issue.number}`;
+    if (!issueMap.has(key)) {
+      issueMap.set(key, issue);
+    }
   });
+  
+  const issues = Array.from(issueMap.values());
+  console.log(`📥 Found ${assignedResponse.data.length} assigned and ${createdResponse.data.length} created issues (${issues.length} unique)`);
 
   const todos: Todo[] = issues.map((issue) => {
     const repoUrl = issue.repository_url;

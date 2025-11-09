@@ -6,7 +6,7 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import { syncGitHubIssues } from '@/services/github/issues';
 import { fullSync } from '@/services/sync-service';
 import type { Todo } from '@/types/todo';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Octicons, MaterialIcons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import {
@@ -38,6 +38,12 @@ export default function TodosScreen() {
       refresh();
     }, [refresh])
   );
+
+  // Refresh todos when authentication state changes
+  useEffect(() => {
+    console.log('🔐 Authentication state changed, refreshing todos...');
+    refresh();
+  }, [isAuthenticated, refresh]);
   
   const cardBackground = useThemeColor({}, 'background');
 
@@ -199,6 +205,27 @@ export default function TodosScreen() {
     return (
       <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
         <ThemedText>Error loading todos: {error.message}</ThemedText>
+      </ThemedView>
+    );
+  }
+
+  // Show auth required message if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={styles.authRequired}>
+          <ThemedText type="title" style={styles.authRequiredTitle}>
+            Authentication Required
+          </ThemedText>
+          <ThemedText style={styles.authRequiredText}>
+            Please sign in to GitHub in the Settings tab to use the todo list.
+          </ThemedText>
+          <TouchableOpacity
+            style={styles.authButton}
+            onPress={() => router.push('/auth/login-wizard')}>
+            <ThemedText style={styles.authButtonText}>Sign In to GitHub</ThemedText>
+          </TouchableOpacity>
+        </View>
       </ThemedView>
     );
   }
@@ -406,6 +433,35 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
+  },
+  authRequired: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+    gap: 20,
+  },
+  authRequiredTitle: {
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  authRequiredText: {
+    textAlign: 'center',
+    opacity: 0.7,
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  authButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 8,
+    marginTop: 16,
+  },
+  authButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
   listContent: {
     gap: 8,

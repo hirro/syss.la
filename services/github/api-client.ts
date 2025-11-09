@@ -138,15 +138,33 @@ export async function createIssue(
   labels?: string[]
 ): Promise<{ number: number; html_url: string }> {
   const octokit = await getOctokit();
-  const { data } = await octokit.issues.create({
-    owner,
-    repo,
-    title,
-    body,
-    labels,
-  });
-  return {
-    number: data.number,
-    html_url: data.html_url,
-  };
+  
+  // Get current user to assign the issue
+  const user = await getCurrentUser();
+  console.log(`📝 Creating issue in ${owner}/${repo} and assigning to ${user.login}...`);
+  
+  try {
+    const { data } = await octokit.issues.create({
+      owner,
+      repo,
+      title,
+      body,
+      labels,
+      assignees: [user.login], // Assign to current user
+    });
+    
+    console.log(`✅ Created issue #${data.number}`);
+    console.log(`👤 Assignees:`, data.assignees?.map(a => a.login).join(', ') || 'none');
+    
+    return {
+      number: data.number,
+      html_url: data.html_url,
+    };
+  } catch (error: any) {
+    console.error('❌ Failed to create issue:', error.message);
+    if (error.response?.data) {
+      console.error('Error details:', error.response.data);
+    }
+    throw error;
+  }
 }

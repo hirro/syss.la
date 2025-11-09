@@ -13,22 +13,27 @@ export async function fetchTodosFromGitHub(config: SyncConfig): Promise<Todo[]> 
   const { owner, repo, branch = DEFAULT_BRANCH } = config;
   console.log(`📥 Fetching from GitHub: ${owner}/${repo}/todos/active.json (branch: ${branch})`);
   
-  const fileData = await getFileWithSha(owner, repo, 'todos/active.json', branch);
-  
-  if (!fileData) {
-    console.log('⚠️ File not found on GitHub (this is OK for first sync)');
-    return [];
-  }
-
   try {
+    const fileData = await getFileWithSha(owner, repo, 'todos/active.json', branch);
+    
+    if (!fileData) {
+      console.log('ℹ️ No existing todos file found (expected for first sync)');
+      return [];
+    }
+  
     const todos: Todo[] = JSON.parse(fileData.content);
     console.log(`✅ Parsed ${todos.length} todos from GitHub`);
     return todos;
-  } catch (error) {
-    console.error('❌ Failed to parse todos from GitHub:', error);
+  } catch (error: any) {
+    if (error.status === 404) {
+      console.log('ℹ️ No existing todos file found (expected for first sync)');
+      return [];
+    }
+    console.error('❌ Failed to fetch todos from GitHub:', error);
     return [];
   }
-}
+};
+
 
 export async function pushTodosToGitHub(
   config: SyncConfig,
@@ -45,7 +50,18 @@ export async function pushTodosToGitHub(
   // Push active todos
   if (activeTodos.length > 0 || todos.length === 0) {
     console.log(`📤 Pushing ${activeTodos.length} active todos to ${owner}/${repo}/todos/active.json`);
-    const existingFile = await getFileWithSha(owner, repo, 'todos/active.json', branch);
+    
+    let existingFile;
+    try {
+      existingFile = await getFileWithSha(owner, repo, 'todos/active.json', branch);
+    } catch (error: any) {
+      if (error.status === 404) {
+        console.log('ℹ️ Creating new todos file (first sync)');
+        existingFile = null;
+      } else {
+        throw error;
+      }
+    }
     
     const content = JSON.stringify(activeTodos, null, 2);
     const message = `Update active todos (${new Date().toISOString()})`;
@@ -79,7 +95,17 @@ export async function pushTodosToGitHub(
       console.log(`📤 Pushing ${monthTodos.length} completed todos to todos/completed/${yearMonth}.json`);
       
       const path = `todos/completed/${yearMonth}.json`;
-      const existingFile = await getFileWithSha(owner, repo, path, branch);
+      let existingFile;
+      try {
+        existingFile = await getFileWithSha(owner, repo, path, branch);
+      } catch (error: any) {
+        if (error.status === 404) {
+          console.log(`ℹ️ Creating new completed todos file for ${yearMonth}`);
+          existingFile = null;
+        } else {
+          throw error;
+        }
+      }
       
       // Merge with existing completed todos for this month
       let allMonthTodos = [...monthTodos];
