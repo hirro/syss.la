@@ -6,6 +6,7 @@ import { useCustomers } from '@/hooks/use-customers';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { formatDuration, deleteTimeEntry, updateTimeEntry } from '@/lib/db/time-entries';
 import type { TimeEntry } from '@/types/time';
+import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import {
   ScrollView,
@@ -299,7 +300,7 @@ export default function TimerScreen() {
         <TouchableOpacity
           style={[styles.fab, { backgroundColor: primaryColor }]}
           onPress={() => setShowNoteEditor(true)}>
-          <ThemedText style={styles.fabIcon}>▶</ThemedText>
+          <Ionicons name="play" size={28} color="#FFFFFF" />
         </TouchableOpacity>
       )}
 
@@ -693,11 +694,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
-  },
-  fabIcon: {
-    fontSize: 28,
-    color: '#FFFFFF',
-    marginLeft: 3,
   },
   modalOverlay: {
     flex: 1,
