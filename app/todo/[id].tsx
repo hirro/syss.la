@@ -23,7 +23,7 @@ export default function TodoDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { isAuthenticated } = useAuth();
-  const { todos, completedTodos, editTodo, completeTodo, reopenTodo } = useTodos();
+  const { todos, completedTodos, editTodo, completeTodo, reopenTodo, removeTodo, addTodo } = useTodos();
   
   const [todo, setTodo] = useState<Todo | null>(null);
   const [originalTodo, setOriginalTodo] = useState<Todo | null>(null);
@@ -199,9 +199,16 @@ export default function TodoDetailScreen() {
         todo.description || ''
       );
 
-      const updatedTodo: Todo = {
-        ...todo,
+      // Create new todo with GitHub issue ID
+      const newTodo: Todo = {
+        id: `github-${owner}-${repo}-${issue.number}`,
         source: 'github-issue',
+        title: todo.title,
+        description: todo.description,
+        createdAt: todo.createdAt,
+        updatedAt: new Date().toISOString(),
+        status: 'open',
+        icon: undefined, // GitHub issues don't have custom icons
         github: {
           owner,
           repo,
@@ -209,11 +216,14 @@ export default function TodoDetailScreen() {
           state: 'open',
           url: issue.html_url,
         },
-        updatedAt: new Date().toISOString(),
       };
 
-      await editTodo(updatedTodo);
-      setTodo(updatedTodo);
+      // Delete old personal todo and add new GitHub issue todo
+      await removeTodo(todo.id);
+      await addTodo(newTodo);
+      
+      // Navigate back since the ID changed
+      router.back();
       
       if (isAuthenticated) {
         await fullSync();
