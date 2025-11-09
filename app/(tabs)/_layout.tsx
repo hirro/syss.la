@@ -1,5 +1,6 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
+import { Tabs, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -8,6 +9,30 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const router = useRouter();
+  const [hasNavigated, setHasNavigated] = useState(false);
+
+  useEffect(() => {
+    const navigateToDefaultTab = async () => {
+      if (hasNavigated) return;
+      
+      try {
+        const defaultTab = await AsyncStorage.getItem('default_startup_tab');
+        if (defaultTab && defaultTab !== 'todos') {
+          setHasNavigated(true);
+          if (defaultTab === 'timer') {
+            router.replace('/(tabs)/timer');
+          } else if (defaultTab === 'settings') {
+            router.replace('/(tabs)/explore');
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load default tab:', error);
+      }
+    };
+    
+    navigateToDefaultTab();
+  }, [hasNavigated, router]);
 
   return (
     <Tabs

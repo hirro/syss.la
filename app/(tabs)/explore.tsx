@@ -22,6 +22,7 @@ export default function SettingsScreen() {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [customerName, setCustomerName] = useState('');
   const [flickNavigationEnabled, setFlickNavigationEnabled] = useState(true);
+  const [defaultTab, setDefaultTab] = useState<'todos' | 'timer'>('todos');
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
@@ -49,8 +50,13 @@ export default function SettingsScreen() {
         if (enabled !== null) {
           setFlickNavigationEnabled(enabled === 'true');
         }
+        
+        const startupTab = await AsyncStorage.getItem('default_startup_tab');
+        if (startupTab !== null && (startupTab === 'todos' || startupTab === 'timer')) {
+          setDefaultTab(startupTab);
+        }
       } catch (error) {
-        console.error('Failed to load flick navigation setting:', error);
+        console.error('Failed to load settings:', error);
       }
     };
     loadSettings();
@@ -62,6 +68,15 @@ export default function SettingsScreen() {
       setFlickNavigationEnabled(value);
     } catch (error) {
       console.error('Failed to save flick navigation setting:', error);
+    }
+  };
+
+  const handleDefaultTabChange = async (tab: 'todos' | 'timer') => {
+    try {
+      await AsyncStorage.setItem('default_startup_tab', tab);
+      setDefaultTab(tab);
+    } catch (error) {
+      console.error('Failed to save default tab setting:', error);
     }
   };
 
@@ -233,6 +248,45 @@ export default function SettingsScreen() {
         <View style={styles.card}>
           <ThemedText type="subtitle" style={styles.cardTitle}>Navigation</ThemedText>
           <View style={styles.cardContent}>
+            <View style={styles.settingSection}>
+              <View style={styles.settingInfo}>
+                <ThemedText style={styles.settingLabel}>Default Startup Tab</ThemedText>
+                <ThemedText style={styles.settingDescription}>
+                  Choose which tab to show when opening the app
+                </ThemedText>
+              </View>
+              <View style={styles.segmentedControl}>
+                <TouchableOpacity
+                  style={[
+                    styles.segmentButton,
+                    styles.segmentButtonLeft,
+                    defaultTab === 'todos' && styles.segmentButtonActive
+                  ]}
+                  onPress={() => handleDefaultTabChange('todos')}>
+                  <ThemedText style={[
+                    styles.segmentButtonText,
+                    defaultTab === 'todos' && styles.segmentButtonTextActive
+                  ]}>
+                    Todos
+                  </ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.segmentButton,
+                    styles.segmentButtonRight,
+                    defaultTab === 'timer' && styles.segmentButtonActive
+                  ]}
+                  onPress={() => handleDefaultTabChange('timer')}>
+                  <ThemedText style={[
+                    styles.segmentButtonText,
+                    defaultTab === 'timer' && styles.segmentButtonTextActive
+                  ]}>
+                    Timer
+                  </ThemedText>
+                </TouchableOpacity>
+              </View>
+            </View>
+
             <View style={styles.settingRow}>
               <View style={styles.settingInfo}>
                 <ThemedText style={styles.settingLabel}>Flick Navigation</ThemedText>
@@ -437,5 +491,43 @@ const styles = StyleSheet.create({
   settingDescription: {
     fontSize: 14,
     opacity: 0.7,
+  },
+  settingSection: {
+    gap: 12,
+  },
+  segmentedControl: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    borderRadius: 8,
+    padding: 2,
+  },
+  segmentButton: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  segmentButtonLeft: {
+    borderTopLeftRadius: 6,
+    borderBottomLeftRadius: 6,
+  },
+  segmentButtonMiddle: {
+    // No border radius
+  },
+  segmentButtonRight: {
+    borderTopRightRadius: 6,
+    borderBottomRightRadius: 6,
+  },
+  segmentButtonActive: {
+    backgroundColor: '#007AFF',
+  },
+  segmentButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#007AFF',
+  },
+  segmentButtonTextActive: {
+    color: '#FFFFFF',
   },
 });
