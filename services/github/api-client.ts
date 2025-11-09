@@ -16,6 +16,12 @@ export async function getOctokit(): Promise<Octokit> {
     octokitInstance = new Octokit({
       auth: token,
       userAgent: 'syss.la v1.0.0',
+      log: {
+        debug: console.debug,
+        info: console.info,
+        warn: console.log,
+        error: console.log,
+      },
     });
     currentToken = token;
   }
