@@ -16,6 +16,7 @@ import {
   TextInput,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 export default function TimerScreen() {
   const insets = useSafeAreaInsets();
@@ -27,9 +28,12 @@ export default function TimerScreen() {
   const [showCustomerPicker, setShowCustomerPicker] = useState(false);
   const [showNoteEditor, setShowNoteEditor] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'list' | 'pomodoro'>('list');
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
   const [showEntryEditor, setShowEntryEditor] = useState(false);
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
+  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
 
   const handleStartTimer = async (customerId: string) => {
     try {
@@ -97,14 +101,87 @@ export default function TimerScreen() {
   const handleSaveEntry = async () => {
     if (!editingEntry) return;
 
+    // Recalculate duration if both start and end are set
+    let updatedEntry = { ...editingEntry };
+    if (updatedEntry.start && updatedEntry.end) {
+      const startTime = new Date(updatedEntry.start).getTime();
+      const endTime = new Date(updatedEntry.end).getTime();
+      const durationMinutes = Math.round((endTime - startTime) / (1000 * 60));
+      updatedEntry = { ...updatedEntry, durationMinutes };
+    }
+
     try {
-      await updateTimeEntry(editingEntry);
+      await updateTimeEntry(updatedEntry);
       setShowEntryEditor(false);
       setEditingEntry(null);
       refresh();
     } catch (error) {
       console.error('Failed to update entry:', error);
       Alert.alert('Error', 'Failed to update entry');
+    }
+  };
+
+  const handleStartDateChange = (event: any, selectedDate?: Date) => {
+    setShowStartDatePicker(false);
+    if (selectedDate && editingEntry) {
+      const currentStart = new Date(editingEntry.start);
+      const newStart = new Date(
+        selectedDate.getFullYear(),
+        selectedDate.getMonth(),
+        selectedDate.getDate(),
+        currentStart.getHours(),
+        currentStart.getMinutes(),
+        currentStart.getSeconds()
+      );
+      setEditingEntry({ ...editingEntry, start: newStart.toISOString() });
+    }
+  };
+
+  const handleStartTimeChange = (event: any, selectedTime?: Date) => {
+    setShowStartTimePicker(false);
+    if (selectedTime && editingEntry) {
+      const currentStart = new Date(editingEntry.start);
+      const newStart = new Date(
+        currentStart.getFullYear(),
+        currentStart.getMonth(),
+        currentStart.getDate(),
+        selectedTime.getHours(),
+        selectedTime.getMinutes(),
+        0
+      );
+      setEditingEntry({ ...editingEntry, start: newStart.toISOString() });
+    }
+  };
+
+  const handleEndDateChange = (event: any, selectedDate?: Date) => {
+    setShowEndDatePicker(false);
+    if (selectedDate && editingEntry && editingEntry.end) {
+      const currentEnd = new Date(editingEntry.end);
+      const newEnd = new Date(
+        selectedDate.getFullYear(),
+        selectedDate.getMonth(),
+        selectedDate.getDate(),
+        currentEnd.getHours(),
+        currentEnd.getMinutes(),
+        currentEnd.getSeconds()
+      );
+      setEditingEntry({ ...editingEntry, end: newEnd.toISOString() });
+    }
+  };
+
+  const handleEndTimeChange = (event: any, selectedTime?: Date) => {
+    setShowEndTimePicker(false);
+    if (selectedTime && editingEntry) {
+      const currentEnd = editingEntry.end ? new Date(editingEntry.end) : new Date();
+      const newEnd = new Date(
+        currentEnd.getFullYear(),
+        currentEnd.getMonth(),
+        currentEnd.getDate(),
+        selectedTime.getHours(),
+        selectedTime.getMinutes(),
+        0
+      );
+      setEditingEntry({ ...editingEntry, end: newEnd.toISOString() });
     }
   };
 
@@ -137,32 +214,6 @@ export default function TimerScreen() {
       {/* Header */}
       <View style={styles.header}>
         <ThemedText type="title">Timer</ThemedText>
-        <View style={styles.headerIcons}>
-          <TouchableOpacity style={styles.headerIcon}>
-            <ThemedText style={styles.headerIconText}>+</ThemedText>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.headerIcon}>
-            <ThemedText style={styles.headerIconText}>⚙</ThemedText>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Tab Switcher */}
-      <View style={styles.tabSwitcher}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'list' && styles.tabActive]}
-          onPress={() => setActiveTab('list')}>
-          <ThemedText style={[styles.tabText, activeTab === 'list' && styles.tabTextActive]}>
-            List
-          </ThemedText>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'pomodoro' && styles.tabActive]}
-          onPress={() => setActiveTab('pomodoro')}>
-          <ThemedText style={[styles.tabText, activeTab === 'pomodoro' && styles.tabTextActive]}>
-            Pomodoro
-          </ThemedText>
-        </TouchableOpacity>
       </View>
 
       {/* Time Entries List */}
@@ -399,20 +450,46 @@ export default function TimerScreen() {
                 />
               </View>
 
-              {/* Start Time */}
+              {/* Start Date & Time */}
               <View style={styles.editorSection}>
-                <ThemedText style={styles.editorLabel}>Start Time</ThemedText>
-                <ThemedText style={styles.editorValue}>
-                  {new Date(editingEntry.start).toLocaleString()}
-                </ThemedText>
+                <ThemedText style={styles.editorLabel}>Start Date & Time</ThemedText>
+                <View style={styles.dateTimeRow}>
+                  <TouchableOpacity
+                    style={styles.dateTimeButton}
+                    onPress={() => setShowStartDatePicker(true)}>
+                    <ThemedText style={styles.dateTimeButtonText}>
+                      {new Date(editingEntry.start).toLocaleDateString()}
+                    </ThemedText>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dateTimeButton}
+                    onPress={() => setShowStartTimePicker(true)}>
+                    <ThemedText style={styles.dateTimeButtonText}>
+                      {new Date(editingEntry.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </ThemedText>
+                  </TouchableOpacity>
+                </View>
               </View>
 
-              {/* End Time */}
+              {/* End Date & Time */}
               <View style={styles.editorSection}>
-                <ThemedText style={styles.editorLabel}>End Time</ThemedText>
-                <ThemedText style={styles.editorValue}>
-                  {editingEntry.end ? new Date(editingEntry.end).toLocaleString() : 'Not set'}
-                </ThemedText>
+                <ThemedText style={styles.editorLabel}>End Date & Time</ThemedText>
+                <View style={styles.dateTimeRow}>
+                  <TouchableOpacity
+                    style={styles.dateTimeButton}
+                    onPress={() => setShowEndDatePicker(true)}>
+                    <ThemedText style={styles.dateTimeButtonText}>
+                      {editingEntry.end ? new Date(editingEntry.end).toLocaleDateString() : 'Not set'}
+                    </ThemedText>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.dateTimeButton}
+                    onPress={() => setShowEndTimePicker(true)}>
+                    <ThemedText style={styles.dateTimeButtonText}>
+                      {editingEntry.end ? new Date(editingEntry.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Not set'}
+                    </ThemedText>
+                  </TouchableOpacity>
+                </View>
               </View>
 
               {/* Duration */}
@@ -430,6 +507,40 @@ export default function TimerScreen() {
                 <ThemedText style={styles.deleteButtonText}>Delete Entry</ThemedText>
               </TouchableOpacity>
             </ScrollView>
+
+            {/* Date/Time Pickers */}
+            {showStartDatePicker && (
+              <DateTimePicker
+                value={new Date(editingEntry.start)}
+                mode="date"
+                display="default"
+                onChange={handleStartDateChange}
+              />
+            )}
+            {showStartTimePicker && (
+              <DateTimePicker
+                value={new Date(editingEntry.start)}
+                mode="time"
+                display="default"
+                onChange={handleStartTimeChange}
+              />
+            )}
+            {showEndDatePicker && editingEntry.end && (
+              <DateTimePicker
+                value={new Date(editingEntry.end)}
+                mode="date"
+                display="default"
+                onChange={handleEndDateChange}
+              />
+            )}
+            {showEndTimePicker && (
+              <DateTimePicker
+                value={editingEntry.end ? new Date(editingEntry.end) : new Date()}
+                mode="time"
+                display="default"
+                onChange={handleEndTimeChange}
+              />
+            )}
           </ThemedView>
         )}
       </Modal>
@@ -442,51 +553,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     padding: 20,
-    paddingBottom: 12,
-  },
-  headerIcons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  headerIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerIconText: {
-    fontSize: 20,
-  },
-  tabSwitcher: {
-    flexDirection: 'row',
-    marginHorizontal: 16,
-    marginBottom: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 8,
-    padding: 4,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 8,
-    alignItems: 'center',
-    borderRadius: 6,
-  },
-  tabActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  tabText: {
-    fontSize: 16,
-    opacity: 0.6,
-  },
-  tabTextActive: {
-    opacity: 1,
-    fontWeight: '600',
+    paddingBottom: 16,
   },
   scrollContainer: {
     flex: 1,
@@ -772,5 +840,22 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  dateTimeRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  dateTimeButton: {
+    flex: 1,
+    padding: 12,
+    backgroundColor: 'rgba(147, 51, 234, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(147, 51, 234, 0.3)',
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  dateTimeButtonText: {
+    fontSize: 16,
+    color: '#9333EA',
   },
 });
