@@ -16,9 +16,19 @@ export interface Project {
 
 export interface TimeEntry {
   id: string;
-  projectId: string;
+  customerId: string;
+  projectId?: string; // Optional project reference
   start: string;
   end?: string;
   durationMinutes?: number;
   note?: string;
+}
+
+export interface ActiveTimer {
+  customerId: string;
+  projectId?: string;
+  note?: string;
+  startTime: string;
+  pausedAt?: string;
+  pausedDuration: number; // Total paused time in milliseconds
 }

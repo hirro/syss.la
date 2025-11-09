@@ -2,6 +2,7 @@ import { getActiveTodos, getCompletedTodos, insertTodo, updateTodo, clearAllTodo
 import { fetchTodosFromGitHub, pushTodosToGitHub, type SyncConfig } from './github/storage';
 import type { Todo } from '@/types/todo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { syncTimeDataToGitHub } from './time-sync';
 
 const SYNC_CONFIG_KEY = 'sync_config';
 
@@ -173,4 +174,24 @@ export async function fullSync(): Promise<void> {
   }
   
   console.log('🎉 fullSync() completed successfully');
+}
+
+/**
+ * Sync all data (todos + time data) to GitHub
+ */
+export async function syncAllDataToGitHub(): Promise<void> {
+  console.log('🔄 Starting full data sync to GitHub...');
+  
+  try {
+    // Sync todos
+    await syncTodosToGitHub();
+    
+    // Sync time data
+    await syncTimeDataToGitHub();
+    
+    console.log('✅ All data synced to GitHub successfully');
+  } catch (error) {
+    console.error('❌ Failed to sync all data:', error);
+    throw error;
+  }
 }

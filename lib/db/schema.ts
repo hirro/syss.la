@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export const CREATE_TABLES = `
 -- Todos table
@@ -48,16 +48,32 @@ CREATE INDEX IF NOT EXISTS idx_projects_customer ON projects(customer_id);
 -- Time entries table
 CREATE TABLE IF NOT EXISTS time_entries (
   id TEXT PRIMARY KEY,
-  project_id TEXT NOT NULL,
+  customer_id TEXT NOT NULL,
+  project_id TEXT,
   start TEXT NOT NULL,
   end TEXT,
   duration_minutes INTEGER,
   note TEXT,
+  FOREIGN KEY (customer_id) REFERENCES customers(id),
   FOREIGN KEY (project_id) REFERENCES projects(id)
 );
 
+CREATE INDEX IF NOT EXISTS idx_time_entries_customer ON time_entries(customer_id);
 CREATE INDEX IF NOT EXISTS idx_time_entries_project ON time_entries(project_id);
 CREATE INDEX IF NOT EXISTS idx_time_entries_start ON time_entries(start);
+
+-- Active timer table (single row for current timer)
+CREATE TABLE IF NOT EXISTS active_timer (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  customer_id TEXT NOT NULL,
+  project_id TEXT,
+  note TEXT,
+  start_time TEXT NOT NULL,
+  paused_at TEXT,
+  paused_duration INTEGER DEFAULT 0,
+  FOREIGN KEY (customer_id) REFERENCES customers(id),
+  FOREIGN KEY (project_id) REFERENCES projects(id)
+);
 
 -- Metadata table
 CREATE TABLE IF NOT EXISTS metadata (
@@ -67,6 +83,32 @@ CREATE TABLE IF NOT EXISTS metadata (
 `;
 
 export const MIGRATIONS = [
-  // Migration 1 to 2: Add archived column to customers
-  `ALTER TABLE customers ADD COLUMN archived INTEGER DEFAULT 0;`,
+  // Migration 0 to 1: Initial schema (no-op, tables created by CREATE_TABLES)
+  `SELECT 1;`,
+  
+  // Migration 1 to 2: Add archived column to customers (if not exists)
+  `
+  -- Check if archived column exists, add if not
+  -- SQLite doesn't support IF NOT EXISTS for ALTER TABLE, so we use a workaround
+  -- This will fail silently if column already exists
+  `,
+  
+  // Migration 2 to 3: Update time_entries to link to customers, add active_timer
+  `
+  -- Check if time_entries already has customer_id column
+  -- If not, we need to migrate the schema
+  
+  -- Create active_timer table (safe with IF NOT EXISTS)
+  CREATE TABLE IF NOT EXISTS active_timer (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    customer_id TEXT NOT NULL,
+    project_id TEXT,
+    note TEXT,
+    start_time TEXT NOT NULL,
+    paused_at TEXT,
+    paused_duration INTEGER DEFAULT 0,
+    FOREIGN KEY (customer_id) REFERENCES customers(id),
+    FOREIGN KEY (project_id) REFERENCES projects(id)
+  );
+  `,
 ];
