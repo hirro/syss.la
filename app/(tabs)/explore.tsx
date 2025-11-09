@@ -141,11 +141,10 @@ export default function SettingsScreen() {
       <ThemedView style={styles.content}>
         <ThemedText type="title">Settings</ThemedText>
 
-        <View style={styles.section}>
-          <ThemedText type="subtitle">GitHub Authentication</ThemedText>
-          
+        <View style={styles.card}>
+          <ThemedText type="subtitle" style={styles.cardTitle}>GitHub Authentication</ThemedText>
           {isAuthenticated ? (
-            <View style={styles.authSection}>
+            <View style={styles.cardContent}>
               <ThemedText>Authenticated as: {username}</ThemedText>
               {syncRepo && (
                 <ThemedText>Storage: {syncRepo}</ThemedText>
@@ -157,7 +156,7 @@ export default function SettingsScreen() {
               </TouchableOpacity>
             </View>
           ) : (
-            <View style={styles.authSection}>
+            <View style={styles.cardContent}>
               <ThemedText>
                 You are not signed in. Please sign in to use the app.
               </ThemedText>
@@ -170,9 +169,9 @@ export default function SettingsScreen() {
           )}
         </View>
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <ThemedText type="subtitle">Customers</ThemedText>
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <ThemedText type="subtitle" style={styles.cardTitle}>Customers</ThemedText>
             <TouchableOpacity
               style={styles.addButton}
               onPress={handleAddCustomer}>
@@ -180,35 +179,39 @@ export default function SettingsScreen() {
             </TouchableOpacity>
           </View>
           
-          {customers.length === 0 ? (
-            <ThemedText style={styles.emptyText}>No customers yet</ThemedText>
-          ) : (
-            customers.map((customer) => (
-              <View key={customer.id} style={styles.customerItem}>
-                <View style={styles.customerInfo}>
-                  <ThemedText style={styles.customerName}>{customer.name}</ThemedText>
+          <View style={styles.cardContent}>
+            {customers.length === 0 ? (
+              <ThemedText style={styles.emptyText}>No customers yet</ThemedText>
+            ) : (
+              customers.map((customer) => (
+                <View key={customer.id} style={styles.customerItem}>
+                  <View style={styles.customerInfo}>
+                    <ThemedText style={styles.customerName}>{customer.name}</ThemedText>
+                  </View>
+                  <View style={styles.customerActions}>
+                    <TouchableOpacity
+                      style={styles.actionButton}
+                      onPress={() => handleEditCustomer(customer)}>
+                      <ThemedText style={styles.actionButtonText}>Edit</ThemedText>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.actionButton, styles.archiveButton]}
+                      onPress={() => handleArchiveCustomer(customer)}>
+                      <ThemedText style={styles.actionButtonText}>Archive</ThemedText>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-                <View style={styles.customerActions}>
-                  <TouchableOpacity
-                    style={styles.actionButton}
-                    onPress={() => handleEditCustomer(customer)}>
-                    <ThemedText style={styles.actionButtonText}>Edit</ThemedText>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.actionButton, styles.archiveButton]}
-                    onPress={() => handleArchiveCustomer(customer)}>
-                    <ThemedText style={styles.actionButtonText}>Archive</ThemedText>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))
-          )}
+              ))
+            )}
+          </View>
         </View>
 
-        <View style={styles.section}>
-          <ThemedText type="subtitle">About</ThemedText>
-          <ThemedText>syss.la v1.0.0</ThemedText>
-          <ThemedText>A developer productivity app</ThemedText>
+        <View style={styles.card}>
+          <ThemedText type="subtitle" style={styles.cardTitle}>About</ThemedText>
+          <View style={styles.cardContent}>
+            <ThemedText>syss.la v1.0.0</ThemedText>
+            <ThemedText>A developer productivity app</ThemedText>
+          </View>
         </View>
       </ThemedView>
 
@@ -257,12 +260,24 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
-    gap: 24,
+    gap: 16,
   },
-  section: {
+  card: {
+    backgroundColor: 'rgba(0, 122, 255, 0.05)',
+    borderRadius: 12,
+    padding: 16,
     gap: 12,
   },
-  authSection: {
+  cardTitle: {
+    marginBottom: 4,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  cardContent: {
     gap: 12,
   },
   button: {
@@ -270,12 +285,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: 'rgba(0, 122, 255, 0.1)',
     alignItems: 'center',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
   },
   addButton: {
     paddingHorizontal: 12,
