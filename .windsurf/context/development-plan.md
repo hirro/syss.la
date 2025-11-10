@@ -51,18 +51,23 @@ All data is stored in the user’s **own GitHub repository** — private, versio
 
 ---
 
-## 🧩 Phase 3 – Wiki Integration
+## 🧩 Phase 3 – Wiki Viewer (Poor Man's Evernote)
 
 ### Objectives
-- Read personal GitHub wiki pages
-- Add local search index
+- Read markdown entries from `/wiki` folder in GitHub repo
+- Add full-text search across all entries
 - Support Markdown rendering
-- Prepare for future editing support
+- Enable creating, editing, and deleting wiki entries
+- Sync wiki entries to/from GitHub
 
 ### Deliverables
-- Wiki browser and search
-- Markdown viewer
-- Indexed wiki metadata in local DB
+- New Wiki tab in navigation
+- Wiki list screen with search
+- Wiki detail screen with markdown rendering
+- Wiki editor for create/edit
+- SQLite storage with FTS5 for search
+- GitHub sync service for wiki entries (`/wiki/*.md`)
+- Offline support with local caching
 
 ---
 
@@ -110,8 +115,8 @@ All data is stored in the user’s **own GitHub repository** — private, versio
 | Phase | Goal | Status |
 |-------|------|--------|
 | 1 | Core foundation | ✅ Complete |
-| 2 | Time tracking | 🔄 In Progress |
-| 3 | Wiki integration | ⏳ Pending |
+| 2 | Time tracking | ✅ Complete |
+| 3 | Wiki viewer (Poor Man's Evernote) | ⏳ Pending |
 | 4 | UX polish & sync | ⏳ Pending |
 | 5 | Release & docs | ⏳ Pending |
 
