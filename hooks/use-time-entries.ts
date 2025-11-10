@@ -9,12 +9,51 @@ import {
   calculateTotalDuration,
   formatDuration,
 } from '@/lib/db/time-entries';
+import { uploadTimeEntries, downloadTimeEntries } from '@/services/github/time-sync';
+import { useAuth } from './use-auth';
 
 export function useTimeEntries(customerId?: string) {
+  const { isAuthenticated } = useAuth();
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [entriesByDate, setEntriesByDate] = useState<Map<string, TimeEntry[]>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+
+  const syncToGitHub = useCallback(async () => {
+    if (!isAuthenticated) return;
+    
+    try {
+      const allEntries = await getTimeEntries();
+      await uploadTimeEntries(allEntries);
+      console.log('✅ Time entries synced to GitHub');
+    } catch (err) {
+      console.error('Failed to sync time entries to GitHub:', err);
+      // Don't throw - sync is optional
+    }
+  }, [isAuthenticated]);
+
+  const syncFromGitHub = useCallback(async () => {
+    if (!isAuthenticated) return;
+    
+    try {
+      const githubEntries = await downloadTimeEntries();
+      
+      // Merge GitHub entries with local ones
+      for (const entry of githubEntries) {
+        try {
+          await insertTimeEntry(entry);
+        } catch (err) {
+          // Entry might already exist, try update
+          await updateTimeEntry(entry);
+        }
+      }
+      
+      console.log('✅ Time entries synced from GitHub');
+    } catch (err) {
+      console.error('Failed to sync time entries from GitHub:', err);
+      // Don't throw - sync is optional
+    }
+  }, [isAuthenticated]);
 
   const loadEntries = useCallback(async () => {
     try {
@@ -35,38 +74,46 @@ export function useTimeEntries(customerId?: string) {
   }, [customerId]);
 
   useEffect(() => {
-    loadEntries();
-  }, [loadEntries]);
+    const init = async () => {
+      await loadEntries();
+      await syncFromGitHub();
+      await loadEntries(); // Reload after sync
+    };
+    init();
+  }, [loadEntries, syncFromGitHub]);
 
   const addEntry = useCallback(async (entry: TimeEntry) => {
     try {
       await insertTimeEntry(entry);
       await loadEntries();
+      await syncToGitHub();
     } catch (err) {
       console.error('Failed to add time entry:', err);
       throw err;
     }
-  }, [loadEntries]);
+  }, [loadEntries, syncToGitHub]);
 
   const editEntry = useCallback(async (entry: TimeEntry) => {
     try {
       await updateTimeEntry(entry);
       await loadEntries();
+      await syncToGitHub();
     } catch (err) {
       console.error('Failed to update time entry:', err);
       throw err;
     }
-  }, [loadEntries]);
+  }, [loadEntries, syncToGitHub]);
 
   const removeEntry = useCallback(async (id: string) => {
     try {
       await deleteTimeEntry(id);
       await loadEntries();
+      await syncToGitHub();
     } catch (err) {
       console.error('Failed to delete time entry:', err);
       throw err;
     }
-  }, [loadEntries]);
+  }, [loadEntries, syncToGitHub]);
 
   const getTotalDuration = useCallback((date?: string) => {
     if (date && entriesByDate.has(date)) {
@@ -84,6 +131,12 @@ export function useTimeEntries(customerId?: string) {
     loadEntries();
   }, [loadEntries]);
 
+  const syncWithGitHub = useCallback(async () => {
+    await syncToGitHub();
+    await syncFromGitHub();
+    await loadEntries();
+  }, [syncToGitHub, syncFromGitHub, loadEntries]);
+
   return {
     entries,
     entriesByDate,
@@ -95,5 +148,6 @@ export function useTimeEntries(customerId?: string) {
     getTotalDuration,
     formatTotalDuration,
     refresh,
+    syncWithGitHub,
   };
 }

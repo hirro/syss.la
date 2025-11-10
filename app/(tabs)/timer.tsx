@@ -28,7 +28,7 @@ export default function TimerScreen() {
   const router = useRouter();
   const { customers } = useCustomers();
   const { activeTimer, elapsedTime, startTimer, stopTimer } = useTimer();
-  const { entriesByDate, formatTotalDuration, refresh } = useTimeEntries();
+  const { entriesByDate, formatTotalDuration, refresh, syncWithGitHub } = useTimeEntries();
   const primaryColor = useThemeColor({}, 'primary');
   
   const [showCustomerPicker, setShowCustomerPicker] = useState(false);
@@ -41,6 +41,20 @@ export default function TimerScreen() {
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+
+  const handleSync = async () => {
+    try {
+      setSyncing(true);
+      await syncWithGitHub();
+      Alert.alert('Success', 'Time entries synced with GitHub');
+    } catch (error) {
+      console.error('Failed to sync:', error);
+      Alert.alert('Error', 'Failed to sync with GitHub. Make sure you are signed in.');
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const handleStartTimer = async (customerId: string) => {
     try {
@@ -295,6 +309,16 @@ export default function TimerScreen() {
       {/* Header */}
       <View style={styles.header}>
         <ThemedText type="title">Timer</ThemedText>
+        <TouchableOpacity
+          style={styles.syncButton}
+          onPress={handleSync}
+          disabled={syncing}>
+          <Ionicons
+            name={syncing ? "sync" : "cloud-upload-outline"}
+            size={24}
+            color={primaryColor}
+          />
+        </TouchableOpacity>
       </View>
 
       {/* Time Entries List */}
@@ -620,8 +644,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     padding: 20,
     paddingBottom: 16,
+  },
+  syncButton: {
+    padding: 8,
   },
   scrollContainer: {
     flex: 1,
