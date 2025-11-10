@@ -104,7 +104,13 @@
 ]
 ```
 
-### Time Entries (`/timeentries/2025-11.json`)
+### Time Entries (`/timeentries/2025-11-09.json`)
+**One file per day**, containing all entries that **started** on that day.
+
+Entries are partitioned by their `start` date:
+- Entry starting on Nov 9 → `/timeentries/2025-11-09.json`
+- Entry starting on Nov 10 → `/timeentries/2025-11-10.json`
+
 ```json
 [
   {

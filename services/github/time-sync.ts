@@ -27,13 +27,42 @@ const CUSTOMERS_FILE = 'customers.json';
 const TIMEENTRIES_PATH = 'timeentries';
 
 /**
- * Get current month's time entries file name
+ * Get file name for a specific date
  */
-function getCurrentMonthFile(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  return `${year}-${month}.json`;
+function getDateFile(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}.json`;
+}
+
+/**
+ * Get date string (YYYY-MM-DD) from ISO timestamp
+ * Uses UTC to ensure consistent date calculation regardless of timezone
+ */
+function getDateFromTimestamp(timestamp: string): string {
+  const date = new Date(timestamp);
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Group time entries by their start date
+ */
+function groupEntriesByDate(entries: TimeEntry[]): Map<string, TimeEntry[]> {
+  const grouped = new Map<string, TimeEntry[]>();
+  
+  for (const entry of entries) {
+    const dateKey = getDateFromTimestamp(entry.start);
+    if (!grouped.has(dateKey)) {
+      grouped.set(dateKey, []);
+    }
+    grouped.get(dateKey)!.push(entry);
+  }
+  
+  return grouped;
 }
 
 /**
@@ -125,7 +154,7 @@ export async function downloadCustomers(): Promise<Customer[]> {
 }
 
 /**
- * Upload time entries for current month to GitHub
+ * Upload time entries to GitHub, partitioned by date
  */
 export async function uploadTimeEntries(entries: TimeEntry[]): Promise<void> {
   try {
@@ -135,40 +164,49 @@ export async function uploadTimeEntries(entries: TimeEntry[]): Promise<void> {
     }
 
     const client = await getOctokit();
-    const path = `${TIMEENTRIES_PATH}/${getCurrentMonthFile()}`;
-    const content = JSON.stringify(entries, null, 2);
-    const encodedContent = toBase64(content);
+    
+    // Group entries by their start date
+    const entriesByDate = groupEntriesByDate(entries);
+    
+    // Upload each date's entries to its own file
+    for (const [dateKey, dateEntries] of entriesByDate) {
+      const path = `${TIMEENTRIES_PATH}/${dateKey}.json`;
+      const content = JSON.stringify(dateEntries, null, 2);
+      const encodedContent = toBase64(content);
 
-    // Try to get existing file to get its SHA
-    let sha: string | undefined;
-    try {
-      const { data: existingFile } = await client.repos.getContent({
+      // Try to get existing file to get its SHA
+      let sha: string | undefined;
+      try {
+        const { data: existingFile } = await client.repos.getContent({
+          owner: config.owner,
+          repo: config.repo,
+          path,
+        });
+
+        if ('sha' in existingFile) {
+          sha = existingFile.sha;
+        }
+      } catch (error: any) {
+        // File doesn't exist yet, that's okay
+        if (error.status !== 404) {
+          throw error;
+        }
+      }
+
+      // Create or update file
+      await client.repos.createOrUpdateFileContents({
         owner: config.owner,
         repo: config.repo,
         path,
+        message: `Update time entries for ${dateKey}`,
+        content: encodedContent,
+        sha,
       });
 
-      if ('sha' in existingFile) {
-        sha = existingFile.sha;
-      }
-    } catch (error: any) {
-      // File doesn't exist yet, that's okay
-      if (error.status !== 404) {
-        throw error;
-      }
+      console.log(`✅ Uploaded ${dateEntries.length} entries for ${dateKey}`);
     }
 
-    // Create or update file
-    await client.repos.createOrUpdateFileContents({
-      owner: config.owner,
-      repo: config.repo,
-      path,
-      message: `Update time entries - ${new Date().toISOString()}`,
-      content: encodedContent,
-      sha,
-    });
-
-    console.log('✅ Time entries uploaded to GitHub');
+    console.log('✅ All time entries uploaded to GitHub');
   } catch (error) {
     console.error('❌ Failed to upload time entries:', error);
     throw error;
@@ -176,7 +214,7 @@ export async function uploadTimeEntries(entries: TimeEntry[]): Promise<void> {
 }
 
 /**
- * Download time entries for current month from GitHub
+ * Download time entries from GitHub (last 30 days)
  */
 export async function downloadTimeEntries(): Promise<TimeEntry[]> {
   try {
@@ -186,27 +224,40 @@ export async function downloadTimeEntries(): Promise<TimeEntry[]> {
     }
 
     const client = await getOctokit();
-    const path = `${TIMEENTRIES_PATH}/${getCurrentMonthFile()}`;
+    const allEntries: TimeEntry[] = [];
+    
+    // Download entries for the last 30 days
+    const today = new Date();
+    for (let i = 0; i < 30; i++) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const dateFile = getDateFile(date);
+      const path = `${TIMEENTRIES_PATH}/${dateFile}`;
 
-    const { data } = await client.repos.getContent({
-      owner: config.owner,
-      repo: config.repo,
-      path,
-    });
+      try {
+        const { data } = await client.repos.getContent({
+          owner: config.owner,
+          repo: config.repo,
+          path,
+        });
 
-    if ('content' in data) {
-      const content = fromBase64(data.content);
-      const entries = JSON.parse(content) as TimeEntry[];
-      console.log(`✅ Downloaded ${entries.length} time entries from GitHub`);
-      return entries;
+        if ('content' in data) {
+          const content = fromBase64(data.content);
+          const entries = JSON.parse(content) as TimeEntry[];
+          allEntries.push(...entries);
+          console.log(`✅ Downloaded ${entries.length} entries from ${dateFile}`);
+        }
+      } catch (error: any) {
+        // File doesn't exist for this date, skip it
+        if (error.status !== 404) {
+          console.error(`Failed to download ${dateFile}:`, error);
+        }
+      }
     }
 
-    return [];
+    console.log(`✅ Downloaded total of ${allEntries.length} time entries from GitHub`);
+    return allEntries;
   } catch (error: any) {
-    if (error.status === 404) {
-      console.log('ℹ️ No time entries file found in GitHub for current month');
-      return [];
-    }
     console.error('❌ Failed to download time entries:', error);
     throw error;
   }
