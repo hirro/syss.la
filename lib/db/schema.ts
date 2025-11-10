@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 export const CREATE_TABLES = `
 -- Todos table
@@ -80,6 +80,42 @@ CREATE TABLE IF NOT EXISTS metadata (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+
+-- Wiki entries table
+CREATE TABLE IF NOT EXISTS wiki_entries (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  filename TEXT NOT NULL UNIQUE,
+  content TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  synced_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_wiki_entries_title ON wiki_entries(title);
+CREATE INDEX IF NOT EXISTS idx_wiki_entries_updated ON wiki_entries(updated_at);
+
+-- Full-text search for wiki entries
+CREATE VIRTUAL TABLE IF NOT EXISTS wiki_fts USING fts5(
+  title,
+  content,
+  content='wiki_entries',
+  content_rowid='rowid'
+);
+
+-- Triggers to keep FTS index in sync
+CREATE TRIGGER IF NOT EXISTS wiki_fts_insert AFTER INSERT ON wiki_entries BEGIN
+  INSERT INTO wiki_fts(rowid, title, content) VALUES (new.rowid, new.title, new.content);
+END;
+
+CREATE TRIGGER IF NOT EXISTS wiki_fts_delete AFTER DELETE ON wiki_entries BEGIN
+  INSERT INTO wiki_fts(wiki_fts, rowid, title, content) VALUES('delete', old.rowid, old.title, old.content);
+END;
+
+CREATE TRIGGER IF NOT EXISTS wiki_fts_update AFTER UPDATE ON wiki_entries BEGIN
+  INSERT INTO wiki_fts(wiki_fts, rowid, title, content) VALUES('delete', old.rowid, old.title, old.content);
+  INSERT INTO wiki_fts(rowid, title, content) VALUES (new.rowid, new.title, new.content);
+END;
 `;
 
 export const MIGRATIONS = [
@@ -110,5 +146,12 @@ export const MIGRATIONS = [
     FOREIGN KEY (customer_id) REFERENCES customers(id),
     FOREIGN KEY (project_id) REFERENCES projects(id)
   );
+  `,
+  
+  // Migration 3 to 4: Add wiki entries and FTS
+  `
+  -- Wiki entries table already created in CREATE_TABLES
+  -- This migration is a no-op since we use IF NOT EXISTS
+  SELECT 1;
   `,
 ];
