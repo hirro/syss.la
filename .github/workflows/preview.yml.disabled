@@ -8,7 +8,7 @@ jobs:
   preview:
     name: Create Preview Build
     runs-on: ubuntu-latest
-    permissions:
+    permissions:  
       pull-requests: write
       contents: read
     steps:
