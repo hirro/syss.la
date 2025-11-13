@@ -101,6 +101,32 @@ All data is stored in the user’s **own GitHub repository** — private, versio
 
 ---
 
+## 🧪 Phase 0 – Testing Infrastructure
+
+### Objectives
+- Establish comprehensive testing strategy
+- Set up unit testing framework
+- Configure E2E testing for native and web platforms
+- Create example tests and documentation
+
+### Deliverables
+- ✅ Jest + React Native Testing Library for unit tests
+- ✅ Detox configuration for iOS/Android E2E tests
+- ✅ Playwright configuration for web E2E tests
+- ✅ Example unit tests (hooks, services)
+- ✅ Example E2E tests (auth, todos)
+- ✅ Testing documentation (`docs/TESTING.md`)
+- ✅ Test scripts in `package.json`
+- ✅ ESLint configuration for test files
+
+### Test Coverage Goals
+- Statements: 70%
+- Branches: 60%
+- Functions: 70%
+- Lines: 70%
+
+---
+
 ## 🧠 Future Enhancements
 
 - Offline write queue (delayed sync)
@@ -114,6 +140,7 @@ All data is stored in the user’s **own GitHub repository** — private, versio
 
 | Phase | Goal | Status |
 |-------|------|--------|
+| 0 | Testing infrastructure | ✅ Complete |
 | 1 | Core foundation | ✅ Complete |
 | 2 | Time tracking | ✅ Complete |
 | 3 | Wiki viewer (Poor Man's Evernote) | ⏳ Pending |
