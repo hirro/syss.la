@@ -1,0 +1,132 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  test-web:
+    name: E2E Tests - Web (Playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Start web server
+        run: |
+          npm run web &
+          npx wait-on http://localhost:8081
+
+      - name: Run Playwright tests
+        run: npm run test:e2e:web
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+
+  test-ios:
+    name: E2E Tests - iOS (Detox)
+    runs-on: macos-latest
+    if: github.event_name == 'workflow_dispatch' # Only run manually due to resource constraints
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup iOS environment
+        run: |
+          brew tap wix/brew
+          brew install applesimutils
+          xcrun simctl boot "iPhone 15" || true
+
+      - name: Build iOS app for testing
+        run: npm run build:e2e:ios
+
+      - name: Run Detox tests (iOS)
+        run: npm run test:e2e:ios
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: detox-ios-report
+          path: artifacts/
+          retention-days: 30
+
+  test-android:
+    name: E2E Tests - Android (Detox)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' # Only run manually due to resource constraints
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Android environment
+        uses: android-actions/setup-android@v3
+
+      - name: Create Android emulator
+        run: |
+          echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install 'system-images;android-33;google_apis;x86_64'
+          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd -n test_emulator -k 'system-images;android-33;google_apis;x86_64' --force
+          $ANDROID_HOME/emulator/emulator -list-avds
+
+      - name: Start Android emulator
+        run: |
+          $ANDROID_HOME/emulator/emulator -avd test_emulator -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim &
+          $ANDROID_HOME/platform-tools/adb wait-for-device shell 'while [[ -z $(getprop sys.boot_completed | tr -d '\r') ]]; do sleep 1; done; input keyevent 82'
+
+      - name: Build Android app for testing
+        run: npm run build:e2e:android
+
+      - name: Run Detox tests (Android)
+        run: npm run test:e2e:android
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: detox-android-report
+          path: artifacts/
+          retention-days: 30

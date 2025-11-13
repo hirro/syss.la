@@ -1,0 +1,60 @@
+name: Production Deployment
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+jobs:
+  build-and-submit:
+    name: Build and Submit to Stores
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Setup Expo
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build for production
+        run: |
+          eas build --platform all --profile production --non-interactive --no-wait
+
+      - name: Submit to App Stores
+        run: |
+          # Submit iOS to App Store Connect
+          eas submit --platform ios --latest --non-interactive || echo "iOS submission failed or not configured"
+          
+          # Submit Android to Google Play
+          eas submit --platform android --latest --non-interactive || echo "Android submission failed or not configured"
+
+      - name: Create GitHub Release
+        uses: actions/github-script@v7
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          script: |
+            const tag = context.ref.replace('refs/tags/', '');
+            const release = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: tag,
+              name: `Release ${tag}`,
+              body: `Production build for version ${tag}`,
+              draft: false,
+              prerelease: false
+            });
+            console.log(`Created release: ${release.data.html_url}`);

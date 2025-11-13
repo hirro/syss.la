@@ -1,0 +1,64 @@
+name: Preview Deployment
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  preview:
+    name: Create Preview Build
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Setup Expo
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create preview build
+        id: preview
+        run: |
+          # Build for preview
+          eas build --platform all --profile preview --non-interactive --no-wait
+          
+          # Get the build URL
+          BUILD_URL=$(eas build:list --platform all --limit 1 --json | jq -r '.[0].artifacts.buildUrl // "N/A"')
+          echo "build_url=$BUILD_URL" >> $GITHUB_OUTPUT
+
+      - name: Comment PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const buildUrl = '${{ steps.preview.outputs.build_url }}';
+            const comment = `## 📱 Preview Build Created
+            
+            Your preview build has been submitted to EAS Build.
+            
+            **Build URL:** ${buildUrl}
+            
+            You can track the build progress in your [Expo dashboard](https://expo.dev/accounts/arnell-consulting-ab/projects/syssla/builds).
+            
+            Once complete, you can install the build on your device using Expo Go or a development build.`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
