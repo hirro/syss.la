@@ -1,21 +1,21 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { useWiki } from '@/hooks/use-wiki';
 import { getWikiEntry } from '@/lib/db/wiki';
 import type { WikiEntry } from '@/types/wiki';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    ScrollView,
+    StyleSheet,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Markdown from 'react-native-markdown-display';
-import { useWiki } from '@/hooks/use-wiki';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function WikiDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -93,24 +93,26 @@ export default function WikiDetailScreen() {
   }
 
   return (
-    <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#000" />
-        </TouchableOpacity>
-        <View style={styles.headerActions}>
-          <TouchableOpacity onPress={handleEdit} style={styles.iconButton}>
-            <Ionicons name="create-outline" size={24} color="#000" />
+    <ThemedView style={styles.container}>
+      <ScrollView 
+        style={styles.scrollContainer}
+        contentContainerStyle={styles.scrollContent}>
+        {/* Action buttons at top */}
+        <View style={styles.actionBar}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.actionButton}>
+            <Ionicons name="arrow-back" size={24} color="#007AFF" />
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleDelete} style={styles.iconButton}>
-            <Ionicons name="trash-outline" size={24} color="#ef4444" />
-          </TouchableOpacity>
+          <View style={styles.actionButtons}>
+            <TouchableOpacity onPress={handleEdit} style={styles.actionButton}>
+              <Ionicons name="create-outline" size={24} color="#007AFF" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleDelete} style={styles.actionButton}>
+              <Ionicons name="trash-outline" size={24} color="#ef4444" />
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
 
-      {/* Content */}
-      <ScrollView style={styles.scrollContainer}>
+        {/* Content */}
         <View style={styles.content}>
           <Markdown style={markdownStyles}>
             {entry.content}
@@ -125,29 +127,30 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  iconButton: {
-    padding: 8,
-  },
   scrollContainer: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: 100,
+  },
+  actionBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: 'transparent',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  actionButton: {
+    padding: 4,
+  },
   content: {
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 8,
   },
   centerContainer: {
     flex: 1,
@@ -164,23 +167,24 @@ const markdownStyles = {
   heading1: {
     fontSize: 32,
     fontWeight: 'bold',
-    marginTop: 20,
-    marginBottom: 10,
+    marginTop: 8,
+    marginBottom: 12,
   },
   heading2: {
     fontSize: 24,
     fontWeight: 'bold',
-    marginTop: 16,
+    marginTop: 8,
     marginBottom: 8,
   },
   heading3: {
     fontSize: 20,
     fontWeight: 'bold',
-    marginTop: 12,
+    marginTop: 8,
     marginBottom: 6,
   },
   paragraph: {
-    marginBottom: 12,
+    marginBottom: 8,
+    lineHeight: 22,
   },
   code_inline: {
     backgroundColor: 'rgba(0, 0, 0, 0.05)',

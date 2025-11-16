@@ -17,10 +17,16 @@ export async function getOctokit(): Promise<Octokit> {
       auth: token,
       userAgent: 'syss.la v1.0.0',
       log: {
-        debug: console.debug,
-        info: console.info,
-        warn: console.log,
-        error: console.log,
+        debug: () => {}, // Suppress debug logs
+        info: () => {}, // Suppress info logs
+        warn: console.warn,
+        error: (message: string, ...args: any[]) => {
+          // Suppress expected 404s for time entries and wiki
+          if (message.includes('404') && (message.includes('timeentries') || message.includes('wiki'))) {
+            return;
+          }
+          console.error(message, ...args);
+        },
       },
     });
     currentToken = token;
@@ -232,4 +238,18 @@ export async function createIssueComment(
       avatarUrl: data.user?.avatar_url,
     },
   };
+}
+
+export async function closeIssue(
+  owner: string,
+  repo: string,
+  issueNumber: number
+): Promise<void> {
+  const octokit = await getOctokit();
+  await octokit.issues.update({
+    owner,
+    repo,
+    issue_number: issueNumber,
+    state: 'closed',
+  });
 }

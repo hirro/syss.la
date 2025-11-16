@@ -2,7 +2,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useAuth } from '@/hooks/use-auth';
 import { useTodos } from '@/hooks/use-todos';
-import { createIssue, createIssueComment, getCurrentUser, listIssueComments, listUserRepos, type IssueComment } from '@/services/github/api-client';
+import { closeIssue, createIssue, createIssueComment, getCurrentUser, listIssueComments, listUserRepos, type IssueComment } from '@/services/github/api-client';
 import { fullSync } from '@/services/sync-service';
 import type { Todo } from '@/types/todo';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -309,6 +309,60 @@ export default function TodoDetailScreen() {
     }
   };
 
+  const handleCloseWithComment = async () => {
+    if (!todo?.github) return;
+
+    const github = todo.github; // Capture for closure
+
+    Alert.alert(
+      'Close Issue?',
+      newComment.trim() 
+        ? `Close this issue with comment?`
+        : `Close this issue without a comment?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Close',
+          style: 'destructive',
+          onPress: async () => {
+            setPostingComment(true);
+            try {
+              // Add comment if there's text
+              if (newComment.trim()) {
+                const comment = await createIssueComment(
+                  github.owner,
+                  github.repo,
+                  github.issueNumber,
+                  newComment
+                );
+                setComments([...comments, comment]);
+                setNewComment('');
+              }
+
+              // Close the issue on GitHub
+              await closeIssue(
+                github.owner,
+                github.repo,
+                github.issueNumber
+              );
+
+              // Mark todo as complete locally
+              await completeTodo(todo.id);
+              
+              console.log('✅ Issue closed successfully');
+              router.back();
+            } catch (error) {
+              console.error('❌ Failed to close issue:', error);
+              alert('Failed to close issue');
+            } finally {
+              setPostingComment(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   if (!todo) {
     return (
       <ThemedView style={styles.container}>
@@ -577,12 +631,13 @@ export default function TodoDetailScreen() {
                         styles.commentButton,
                         styles.commentButtonClose
                       ]}
-                      onPress={handleCompleteTodo}>
+                      onPress={handleCloseWithComment}
+                      disabled={postingComment}>
                       <ThemedText style={[
                         styles.commentButtonText,
                         styles.commentButtonTextClose
                       ]}>
-                        Close issue
+                        {postingComment ? 'Closing...' : 'Close issue'}
                       </ThemedText>
                     </TouchableOpacity>
                   </View>
@@ -616,7 +671,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 20,
+    paddingBottom: 100,
   },
   centered: {
     flex: 1,
