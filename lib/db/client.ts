@@ -107,3 +107,24 @@ export async function resetDatabase(): Promise<void> {
   db = null;
   await initDatabase();
 }
+
+/**
+ * Clear all data from all tables in the database
+ * This preserves the schema but removes all user data
+ */
+export async function clearAllDatabaseTables(): Promise<void> {
+  const db = await getDatabase();
+  
+  console.log('🗑️ Clearing all database tables...');
+  
+  // Clear all tables in order (respecting foreign key constraints)
+  await db.runAsync('DELETE FROM active_timer');
+  await db.runAsync('DELETE FROM time_entries');
+  await db.runAsync('DELETE FROM projects');
+  await db.runAsync('DELETE FROM customers');
+  await db.runAsync('DELETE FROM todos');
+  await db.runAsync('DELETE FROM wiki_entries');
+  // Note: wiki_fts is automatically updated by triggers
+  
+  console.log('✅ All database tables cleared');
+}
