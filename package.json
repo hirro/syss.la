@@ -12,12 +12,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "test:e2e:ios": "detox test --configuration ios.sim.debug",
-    "test:e2e:android": "detox test --configuration android.emu.debug",
-    "test:e2e:web": "playwright test",
-    "test:e2e:web:ui": "playwright test --ui",
-    "build:e2e:ios": "detox build --configuration ios.sim.debug",
-    "build:e2e:android": "detox build --configuration android.emu.debug"
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

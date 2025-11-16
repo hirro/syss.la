@@ -1,5 +1,5 @@
 import * as SQLite from 'expo-sqlite';
-import { CREATE_TABLES, SCHEMA_VERSION, MIGRATIONS } from './schema';
+import { CREATE_TABLES, MIGRATIONS, SCHEMA_VERSION } from './schema';
 
 let db: SQLite.SQLiteDatabase | null = null;
 let migrationRun = false;
