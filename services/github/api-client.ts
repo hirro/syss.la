@@ -136,6 +136,16 @@ export async function createOrUpdateFile(
   });
 }
 
+export interface IssueComment {
+  id: number;
+  body: string;
+  createdAt: string;
+  user: {
+    login: string;
+    avatarUrl?: string;
+  };
+}
+
 export async function createIssue(
   owner: string,
   repo: string,
@@ -173,4 +183,53 @@ export async function createIssue(
     }
     throw error;
   }
+}
+
+export async function listIssueComments(
+  owner: string,
+  repo: string,
+  issueNumber: number
+): Promise<IssueComment[]> {
+  const octokit = await getOctokit();
+  const { data } = await octokit.issues.listComments({
+    owner,
+    repo,
+    issue_number: issueNumber,
+    per_page: 100,
+  });
+
+  return data.map((comment) => ({
+    id: comment.id,
+    body: comment.body || '',
+    createdAt: comment.created_at,
+    user: {
+      login: comment.user?.login || 'unknown',
+      avatarUrl: comment.user?.avatar_url,
+    },
+  }));
+}
+
+export async function createIssueComment(
+  owner: string,
+  repo: string,
+  issueNumber: number,
+  body: string
+): Promise<IssueComment> {
+  const octokit = await getOctokit();
+  const { data } = await octokit.issues.createComment({
+    owner,
+    repo,
+    issue_number: issueNumber,
+    body,
+  });
+
+  return {
+    id: data.id,
+    body: data.body || '',
+    createdAt: data.created_at,
+    user: {
+      login: data.user?.login || 'unknown',
+      avatarUrl: data.user?.avatar_url,
+    },
+  };
 }

@@ -2,21 +2,21 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useAuth } from '@/hooks/use-auth';
 import { useTodos } from '@/hooks/use-todos';
-import { createIssue, listUserRepos } from '@/services/github/api-client';
+import { createIssue, createIssueComment, getCurrentUser, listIssueComments, listUserRepos, type IssueComment } from '@/services/github/api-client';
 import { fullSync } from '@/services/sync-service';
 import type { Todo } from '@/types/todo';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Linking,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Linking,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 export default function TodoDetailScreen() {
@@ -33,6 +33,11 @@ export default function TodoDetailScreen() {
   const [selectedRepoForConvert, setSelectedRepoForConvert] = useState<any | null>(null);
   const [loadingRepos, setLoadingRepos] = useState(false);
   const [converting, setConverting] = useState(false);
+  const [comments, setComments] = useState<IssueComment[]>([]);
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [newComment, setNewComment] = useState('');
+  const [postingComment, setPostingComment] = useState(false);
+  const [currentUserLogin, setCurrentUserLogin] = useState<string>('');
 
   // Available icons for personal todos
   const availableIcons = [
@@ -58,6 +63,43 @@ export default function TodoDetailScreen() {
       setOriginalTodo(foundTodo);
     }
   }, [id, todos, completedTodos]);
+
+  // Load current user
+  useEffect(() => {
+    const loadUser = async () => {
+      if (isAuthenticated) {
+        try {
+          const user = await getCurrentUser();
+          setCurrentUserLogin(user.login);
+        } catch (error) {
+          console.error('Failed to load current user:', error);
+        }
+      }
+    };
+    loadUser();
+  }, [isAuthenticated]);
+
+  // Load comments for GitHub issues
+  useEffect(() => {
+    const loadComments = async () => {
+      if (todo?.github && isAuthenticated) {
+        setLoadingComments(true);
+        try {
+          const fetchedComments = await listIssueComments(
+            todo.github.owner,
+            todo.github.repo,
+            todo.github.issueNumber
+          );
+          setComments(fetchedComments);
+        } catch (error) {
+          console.error('Failed to load comments:', error);
+        } finally {
+          setLoadingComments(false);
+        }
+      }
+    };
+    loadComments();
+  }, [todo?.github, isAuthenticated]);
 
   // Save changes when navigating away
   useEffect(() => {
@@ -241,6 +283,29 @@ export default function TodoDetailScreen() {
       alert('Failed to convert to GitHub issue');
     } finally {
       setConverting(false);
+    }
+  };
+
+  const handleAddComment = async () => {
+    if (!todo?.github || !newComment.trim() || postingComment) return;
+
+    setPostingComment(true);
+    try {
+      const comment = await createIssueComment(
+        todo.github.owner,
+        todo.github.repo,
+        todo.github.issueNumber,
+        newComment
+      );
+      
+      setComments([...comments, comment]);
+      setNewComment('');
+      console.log('✅ Comment added successfully');
+    } catch (error) {
+      console.error('❌ Failed to add comment:', error);
+      alert('Failed to add comment');
+    } finally {
+      setPostingComment(false);
     }
   };
 
@@ -442,6 +507,88 @@ export default function TodoDetailScreen() {
                 Open in GitHub client
               </ThemedText>
             </TouchableOpacity>
+          </View>
+        )}
+
+        {todo.github && isAuthenticated && (
+          <View style={styles.section}>
+            <ThemedText style={styles.sectionTitle}>Comments</ThemedText>
+            
+            {loadingComments ? (
+              <ActivityIndicator size="small" style={styles.commentsLoader} />
+            ) : (
+              <>
+                {comments.length === 0 ? (
+                  <ThemedText style={styles.noComments}>No comments yet</ThemedText>
+                ) : (
+                  <View style={styles.commentsContainer}>
+                    {comments.map((comment) => {
+                      const isCurrentUser = comment.user.login === currentUserLogin;
+                      return (
+                        <View
+                          key={comment.id}
+                          style={[
+                            styles.commentCard,
+                            isCurrentUser ? styles.commentCardRight : styles.commentCardLeft
+                          ]}>
+                          <View style={styles.commentHeader}>
+                            <ThemedText style={styles.commentAuthor}>
+                              {comment.user.login}
+                            </ThemedText>
+                            <ThemedText style={styles.commentDate}>
+                              {new Date(comment.createdAt).toLocaleDateString()}
+                            </ThemedText>
+                          </View>
+                          <ThemedText style={styles.commentBody}>{comment.body}</ThemedText>
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
+
+                <View style={styles.commentInputSection}>
+                  <TextInput
+                    style={styles.commentInput}
+                    placeholder="Add a comment..."
+                    value={newComment}
+                    onChangeText={setNewComment}
+                    multiline
+                    numberOfLines={3}
+                  />
+                  <View style={styles.commentButtons}>
+                    <TouchableOpacity
+                      style={[
+                        styles.commentButton,
+                        styles.commentButtonAdd,
+                        !newComment.trim() && styles.commentButtonDisabled
+                      ]}
+                      onPress={handleAddComment}
+                      disabled={!newComment.trim() || postingComment}>
+                      <ThemedText style={[
+                        styles.commentButtonText,
+                        styles.commentButtonTextAdd,
+                        !newComment.trim() && styles.commentButtonTextDisabled
+                      ]}>
+                        {postingComment ? 'Adding...' : 'Add comment'}
+                      </ThemedText>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.commentButton,
+                        styles.commentButtonClose
+                      ]}
+                      onPress={handleCompleteTodo}>
+                      <ThemedText style={[
+                        styles.commentButtonText,
+                        styles.commentButtonTextClose
+                      ]}>
+                        Close issue
+                      </ThemedText>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </>
+            )}
           </View>
         )}
 
@@ -652,5 +799,99 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+  },
+  commentsLoader: {
+    marginVertical: 12,
+  },
+  noComments: {
+    fontStyle: 'italic',
+    opacity: 0.6,
+    marginVertical: 8,
+  },
+  commentsContainer: {
+    marginTop: 8,
+    gap: 12,
+  },
+  commentCard: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+    padding: 12,
+    maxWidth: '85%',
+  },
+  commentCardLeft: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#f0f0f0',
+  },
+  commentCardRight: {
+    alignSelf: 'flex-end',
+    backgroundColor: '#007AFF',
+  },
+  commentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  commentAuthor: {
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  commentDate: {
+    fontSize: 11,
+    opacity: 0.6,
+  },
+  commentBody: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  commentInputSection: {
+    marginTop: 16,
+  },
+  commentInput: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: '#fff',
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  commentButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+    marginTop: 8,
+  },
+  commentButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#007AFF',
+  },
+  commentButtonClose: {
+    backgroundColor: '#fff',
+    borderColor: '#FF3B30',
+  },
+  commentButtonAdd: {
+    backgroundColor: '#007AFF',
+  },
+  commentButtonDisabled: {
+    backgroundColor: '#ccc',
+    borderColor: '#ccc',
+  },
+  commentButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#007AFF',
+  },
+  commentButtonTextAdd: {
+    color: '#fff',
+  },
+  commentButtonTextClose: {
+    color: '#FF3B30',
+  },
+  commentButtonTextDisabled: {
+    color: '#999',
   },
 });
