@@ -2,9 +2,9 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useAuth } from '@/hooks/use-auth';
 import { useCustomers } from '@/hooks/use-customers';
-import { clearAllTodos } from '@/lib/db/todos';
+import { clearAllDatabaseTables } from '@/lib/db/client';
 import { getCurrentUser } from '@/services/github/api-client';
-import { getSyncConfig } from '@/services/sync-service';
+import { fullSync, getSyncConfig } from '@/services/sync-service';
 import type { Customer } from '@/types/time';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
@@ -83,7 +83,7 @@ export default function SettingsScreen() {
   const handleLogout = async () => {
     Alert.alert(
       'Sign Out',
-      'This will clear all local todos. Your GitHub storage will remain unchanged.\n\nNote: If you sign in again, syncing will restore todos from GitHub.',
+      'This will sync all your data to GitHub, then clear all local data.\n\nYour data will be safely stored in GitHub and restored when you sign in again.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -91,8 +91,19 @@ export default function SettingsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
+              console.log('🔄 Running final sync before sign out...');
+              
+              // Run full sync to ensure all data is saved to GitHub
+              try {
+                await fullSync();
+                console.log('✅ Final sync completed');
+              } catch (syncError) {
+                console.error('⚠️ Sync failed, but continuing with sign out:', syncError);
+                // Continue with sign out even if sync fails
+              }
+              
               console.log('🗑️ Clearing all local data...');
-              await clearAllTodos();
+              await clearAllDatabaseTables();
               await AsyncStorage.removeItem('sync_config');
               await logout();
               setUsername('');
