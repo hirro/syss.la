@@ -46,6 +46,7 @@ export async function listUserRepos() {
   const { data } = await octokit.repos.listForAuthenticatedUser({
     sort: 'updated',
     per_page: 100,
+    visibility: 'private',
   });
   return data;
 }

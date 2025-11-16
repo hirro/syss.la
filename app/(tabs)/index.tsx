@@ -1,27 +1,27 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useAuth } from '@/hooks/use-auth';
-import { useTodos } from '@/hooks/use-todos';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { useTodos } from '@/hooks/use-todos';
 import { syncGitHubIssues } from '@/services/github/issues';
 import { fullSync } from '@/services/sync-service';
 import type { Todo } from '@/types/todo';
-import React, { useState, useEffect, useRef } from 'react';
-import { Octicons, MaterialIcons } from '@expo/vector-icons';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { MaterialIcons, Octicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { Accelerometer } from 'expo-sensors';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Accelerometer } from 'expo-sensors';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function TodosScreen() {
   const router = useRouter();
@@ -37,13 +37,13 @@ export default function TodosScreen() {
   const lastFlickTime = useRef(0);
   const hasNavigated = useRef(false);
   const previousX = useRef(0);
-  const [flickEnabled, setFlickEnabled] = useState(true);
+  const [flickEnabled, setFlickEnabled] = useState(false);
 
   useEffect(() => {
     const loadSetting = async () => {
       try {
         const enabled = await AsyncStorage.getItem('flick_navigation_enabled');
-        setFlickEnabled(enabled !== 'false'); // Default to true
+        setFlickEnabled(enabled === 'true'); // Default to false
       } catch (error) {
         console.error('Failed to load flick navigation setting:', error);
       }

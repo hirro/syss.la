@@ -251,6 +251,10 @@ export default function LoginWizardScreen() {
               Choose a repository where your todos will be stored. The app will create files in this repository to sync your data.
             </ThemedText>
 
+            <ThemedText style={styles.infoText}>
+              ℹ️ Only private repositories are shown
+            </ThemedText>
+
             {loadingRepos ? (
               <ActivityIndicator size="large" style={styles.loader} />
             ) : (
@@ -429,6 +433,13 @@ const styles = StyleSheet.create({
     opacity: 0.8,
     fontSize: 16,
     lineHeight: 24,
+  },
+  infoText: {
+    textAlign: 'center',
+    opacity: 0.6,
+    fontSize: 14,
+    fontStyle: 'italic',
+    marginTop: -8,
   },
   instructionsBox: {
     backgroundColor: 'rgba(0, 122, 255, 0.1)',

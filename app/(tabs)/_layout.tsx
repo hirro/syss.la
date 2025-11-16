@@ -1,15 +1,17 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Tabs, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
+import { useAuth } from '@/hooks/use-auth';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const router = useRouter();
+  const { isAuthenticated } = useAuth();
   const [hasNavigated, setHasNavigated] = useState(false);
 
   useEffect(() => {
@@ -46,6 +48,7 @@ export default function TabLayout() {
         options={{
           title: 'Todos',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="checklist" color={color} />,
+          href: isAuthenticated ? '/(tabs)' : null,
         }}
       />
       <Tabs.Screen
@@ -53,6 +56,7 @@ export default function TabLayout() {
         options={{
           title: 'Timer',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="clock" color={color} />,
+          href: isAuthenticated ? '/(tabs)/timer' : null,
         }}
       />
       <Tabs.Screen
@@ -60,6 +64,7 @@ export default function TabLayout() {
         options={{
           title: 'Wiki',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="book.fill" color={color} />,
+          href: isAuthenticated ? '/(tabs)/wiki' : null,
         }}
       />
       <Tabs.Screen
@@ -67,6 +72,7 @@ export default function TabLayout() {
         options={{
           title: 'Settings',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="gearshape.fill" color={color} />,
+          href: isAuthenticated ? '/(tabs)/explore' : null,
         }}
       />
     </Tabs>

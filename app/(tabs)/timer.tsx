@@ -1,27 +1,27 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useTimer } from '@/hooks/use-timer';
-import { useTimeEntries } from '@/hooks/use-time-entries';
 import { useCustomers } from '@/hooks/use-customers';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { formatDuration, deleteTimeEntry, updateTimeEntry } from '@/lib/db/time-entries';
+import { useTimeEntries } from '@/hooks/use-time-entries';
+import { useTimer } from '@/hooks/use-timer';
+import { deleteTimeEntry, formatDuration, updateTimeEntry } from '@/lib/db/time-entries';
 import type { TimeEntry } from '@/types/time';
 import { Ionicons } from '@expo/vector-icons';
-import { useState, useEffect, useRef } from 'react';
-import {
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  View,
-  Modal,
-  Alert,
-  TextInput,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import { Accelerometer } from 'expo-sensors';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useEffect, useRef, useState } from 'react';
+import {
+    Alert,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TimerScreen() {
   const insets = useSafeAreaInsets();
@@ -258,13 +258,13 @@ export default function TimerScreen() {
   const lastFlickTime = useRef(0);
   const hasNavigated = useRef(false);
   const previousX = useRef(0);
-  const [flickEnabled, setFlickEnabled] = useState(true);
+  const [flickEnabled, setFlickEnabled] = useState(false);
 
   useEffect(() => {
     const loadSetting = async () => {
       try {
         const enabled = await AsyncStorage.getItem('flick_navigation_enabled');
-        setFlickEnabled(enabled !== 'false'); // Default to true
+        setFlickEnabled(enabled === 'true'); // Default to false
       } catch (error) {
         console.error('Failed to load flick navigation setting:', error);
       }

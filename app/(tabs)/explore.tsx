@@ -9,7 +9,7 @@ import type { Customer } from '@/types/time';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Modal, ScrollView, StyleSheet, Switch, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SettingsScreen() {
@@ -21,7 +21,6 @@ export default function SettingsScreen() {
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [customerName, setCustomerName] = useState('');
-  const [flickNavigationEnabled, setFlickNavigationEnabled] = useState(true);
   const [defaultTab, setDefaultTab] = useState<'todos' | 'timer'>('todos');
   const insets = useSafeAreaInsets();
 
@@ -46,11 +45,6 @@ export default function SettingsScreen() {
   useEffect(() => {
     const loadSettings = async () => {
       try {
-        const enabled = await AsyncStorage.getItem('flick_navigation_enabled');
-        if (enabled !== null) {
-          setFlickNavigationEnabled(enabled === 'true');
-        }
-        
         const startupTab = await AsyncStorage.getItem('default_startup_tab');
         if (startupTab !== null && (startupTab === 'todos' || startupTab === 'timer')) {
           setDefaultTab(startupTab);
@@ -62,14 +56,6 @@ export default function SettingsScreen() {
     loadSettings();
   }, []);
 
-  const handleToggleFlickNavigation = async (value: boolean) => {
-    try {
-      await AsyncStorage.setItem('flick_navigation_enabled', value.toString());
-      setFlickNavigationEnabled(value);
-    } catch (error) {
-      console.error('Failed to save flick navigation setting:', error);
-    }
-  };
 
   const handleDefaultTabChange = async (tab: 'todos' | 'timer') => {
     try {
@@ -298,18 +284,6 @@ export default function SettingsScreen() {
               </View>
             </View>
 
-            <View style={styles.settingRow}>
-              <View style={styles.settingInfo}>
-                <ThemedText style={styles.settingLabel}>Flick Navigation</ThemedText>
-                <ThemedText style={styles.settingDescription}>
-                  Quickly flick your device to switch between Todos and Timer tabs
-                </ThemedText>
-              </View>
-              <Switch
-                value={flickNavigationEnabled}
-                onValueChange={handleToggleFlickNavigation}
-              />
-            </View>
           </View>
         </View>
 
