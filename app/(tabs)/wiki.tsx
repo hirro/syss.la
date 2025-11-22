@@ -5,7 +5,7 @@ import { useWiki } from '@/hooks/use-wiki';
 import type { WikiEntry } from '@/types/wiki';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -26,6 +26,7 @@ export default function WikiScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<WikiEntry[]>([]);
   const [syncing, setSyncing] = useState(false);
+  const [collapsedDirs, setCollapsedDirs] = useState<Set<string>>(new Set());
 
   const handleSearch = async (query: string) => {
     setSearchQuery(query);
@@ -72,6 +73,127 @@ export default function WikiScreen() {
   };
 
   const displayEntries = searchQuery.trim() ? searchResults : entries;
+
+  // Build tree structure from flat entries
+  interface TreeNode {
+    name: string;
+    path: string;
+    type: 'file' | 'directory';
+    entry?: WikiEntry;
+    children: TreeNode[];
+  }
+
+  const buildTree = useCallback((entries: WikiEntry[]): TreeNode[] => {
+    const root: TreeNode[] = [];
+    const dirMap = new Map<string, TreeNode>();
+
+    entries.forEach(entry => {
+      const parts = entry.filename.split('/');
+      let currentPath = '';
+      let currentLevel = root;
+
+      parts.forEach((part, index) => {
+        const isFile = index === parts.length - 1;
+        currentPath = currentPath ? `${currentPath}/${part}` : part;
+
+        if (isFile) {
+          // Add file node
+          currentLevel.push({
+            name: entry.title,
+            path: currentPath,
+            type: 'file',
+            entry,
+            children: [],
+          });
+        } else {
+          // Add or get directory node
+          let dirNode = dirMap.get(currentPath);
+          if (!dirNode) {
+            dirNode = {
+              name: part,
+              path: currentPath,
+              type: 'directory',
+              children: [],
+            };
+            dirMap.set(currentPath, dirNode);
+            currentLevel.push(dirNode);
+          }
+          currentLevel = dirNode.children;
+        }
+      });
+    });
+
+    return root;
+  }, []);
+
+  const treeData = useMemo(() => buildTree(displayEntries), [displayEntries, buildTree]);
+
+  const toggleDirectory = (path: string) => {
+    setCollapsedDirs(prev => {
+      const next = new Set(prev);
+      if (next.has(path)) {
+        next.delete(path);
+      } else {
+        next.add(path);
+      }
+      return next;
+    });
+  };
+
+  const renderTree = (nodes: TreeNode[], depth: number): React.ReactNode => {
+    return nodes.map((node) => {
+      if (node.type === 'directory') {
+        const isCollapsed = collapsedDirs.has(node.path);
+        return (
+          <View key={node.path}>
+            <TouchableOpacity
+              style={[styles.directoryItem, { paddingLeft: 20 + depth * 16 }]}
+              onPress={() => toggleDirectory(node.path)}
+              activeOpacity={0.7}>
+              <Ionicons
+                name={isCollapsed ? 'chevron-forward' : 'chevron-down'}
+                size={16}
+                color="#888"
+                style={styles.chevron}
+              />
+              <Ionicons
+                name={isCollapsed ? 'folder' : 'folder-open'}
+                size={20}
+                color={primaryColor}
+                style={styles.folderIcon}
+              />
+              <ThemedText style={styles.directoryName}>{node.name}</ThemedText>
+            </TouchableOpacity>
+            {!isCollapsed && renderTree(node.children, depth + 1)}
+          </View>
+        );
+      } else {
+        return (
+          <TouchableOpacity
+            key={node.entry!.id}
+            style={[styles.fileItem, { paddingLeft: 20 + depth * 16 }]}
+            onPress={() => router.push(`/wiki/${node.entry!.id}`)}
+            activeOpacity={0.7}>
+            <Ionicons
+              name="document-text"
+              size={18}
+              color="#888"
+              style={styles.fileIcon}
+            />
+            <ThemedText style={styles.fileName}>{node.name}</ThemedText>
+            <TouchableOpacity
+              style={styles.deleteButton}
+              onPress={(e) => {
+                e.stopPropagation();
+                handleDelete(node.entry!);
+              }}>
+              <Ionicons name="trash-outline" size={18} color="#ef4444" />
+            </TouchableOpacity>
+          </TouchableOpacity>
+        );
+      }
+    });
+  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -145,22 +267,7 @@ export default function WikiScreen() {
         </View>
       ) : (
         <ScrollView style={styles.scrollContainer}>
-          {displayEntries.map(entry => (
-            <TouchableOpacity
-              key={entry.id}
-              style={styles.entryCard}
-              onPress={() => router.push(`/wiki/${entry.id}`)}
-              activeOpacity={0.7}>
-              <View style={styles.entryContent}>
-                <ThemedText style={styles.entryTitle}>{entry.title}</ThemedText>
-              </View>
-              <TouchableOpacity
-                style={styles.deleteButton}
-                onPress={() => handleDelete(entry)}>
-                <Ionicons name="trash-outline" size={20} color="#ef4444" />
-              </TouchableOpacity>
-            </TouchableOpacity>
-          ))}
+          {renderTree(treeData, 0)}
         </ScrollView>
       )}
 
@@ -226,22 +333,35 @@ const styles = StyleSheet.create({
     opacity: 0.6,
     textAlign: 'center',
   },
-  entryCard: {
+  directoryItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(147, 51, 234, 0.05)',
-    borderRadius: 12,
-    padding: 16,
-    marginHorizontal: 20,
-    marginBottom: 12,
+    paddingVertical: 12,
+    paddingRight: 20,
   },
-  entryContent: {
-    flex: 1,
+  chevron: {
+    marginRight: 4,
   },
-  entryTitle: {
-    fontSize: 18,
+  folderIcon: {
+    marginRight: 8,
+  },
+  directoryName: {
+    fontSize: 16,
     fontWeight: '600',
-    marginBottom: 4,
+  },
+  fileItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingRight: 20,
+    backgroundColor: 'rgba(147, 51, 234, 0.02)',
+  },
+  fileIcon: {
+    marginRight: 8,
+  },
+  fileName: {
+    flex: 1,
+    fontSize: 15,
   },
   entryPreview: {
     fontSize: 14,

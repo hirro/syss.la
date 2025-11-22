@@ -121,12 +121,33 @@ export function useWiki() {
         throw new Error('Entry not found');
       }
 
+      // Update filename if title changed
+      let newFilename = existing.filename;
+      if (title !== existing.title) {
+        // Get the directory path from existing filename
+        const parts = existing.filename.split('/');
+        if (parts.length > 1) {
+          // Has directory structure - preserve it
+          const directories = parts.slice(0, -1);
+          newFilename = `${directories.join('/')}/${title}.md`;
+        } else {
+          // No directory - just update the filename
+          newFilename = `${title}.md`;
+        }
+      }
+
       const updated: WikiEntry = {
         ...existing,
         title,
+        filename: newFilename,
         content,
         updatedAt: new Date().toISOString(),
       };
+
+      // If filename changed, delete old file from GitHub
+      if (newFilename !== existing.filename && isAuthenticated) {
+        await deleteWikiEntryGh(existing.filename);
+      }
 
       await updateWikiEntry(updated);
       await loadEntries();
@@ -135,7 +156,7 @@ export function useWiki() {
       console.error('Failed to update wiki entry:', err);
       throw err;
     }
-  }, [loadEntries, syncToGitHub]);
+  }, [loadEntries, syncToGitHub, isAuthenticated]);
 
   const removeEntry = useCallback(async (id: string) => {
     try {
