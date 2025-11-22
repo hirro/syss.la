@@ -1,7 +1,6 @@
-import { getOctokit } from './api-client';
-import { getSyncConfig } from '../sync-service';
 import type { WikiEntry } from '@/types/wiki';
-import { extractTitleFromMarkdown } from '@/lib/db/wiki';
+import { getSyncConfig } from '../sync-service';
+import { getOctokit } from './api-client';
 
 /**
  * Convert string to base64 (React Native compatible)
@@ -20,7 +19,47 @@ function fromBase64(str: string): string {
 const WIKI_PATH = 'wiki';
 
 /**
- * Download all wiki entries from GitHub
+ * Recursively get all .md files from a directory and its subdirectories
+ */
+async function getAllMarkdownFiles(
+  client: any,
+  owner: string,
+  repo: string,
+  path: string
+): Promise<{ path: string; name: string }[]> {
+  const files: { path: string; name: string }[] = [];
+
+  try {
+    const { data } = await client.repos.getContent({
+      owner,
+      repo,
+      path,
+    });
+
+    if (!Array.isArray(data)) {
+      return files;
+    }
+
+    for (const item of data) {
+      if (item.type === 'file' && item.name.endsWith('.md')) {
+        files.push({ path: item.path, name: item.name });
+      } else if (item.type === 'dir') {
+        // Recursively get files from subdirectory
+        const subFiles = await getAllMarkdownFiles(client, owner, repo, item.path);
+        files.push(...subFiles);
+      }
+    }
+  } catch (error: any) {
+    if (error.status !== 404) {
+      console.error(`Failed to read directory ${path}:`, error);
+    }
+  }
+
+  return files;
+}
+
+/**
+ * Download all wiki entries from GitHub (including subdirectories)
  */
 export async function downloadWikiEntries(): Promise<WikiEntry[]> {
   try {
@@ -31,47 +70,43 @@ export async function downloadWikiEntries(): Promise<WikiEntry[]> {
 
     const client = await getOctokit();
     
-    // Get all files in the wiki directory
-    const { data } = await client.repos.getContent({
-      owner: config.owner,
-      repo: config.repo,
-      path: WIKI_PATH,
-    });
-
-    if (!Array.isArray(data)) {
-      console.log('ℹ️ Wiki path is not a directory');
-      return [];
-    }
+    // Get all .md files recursively from wiki directory
+    const files = await getAllMarkdownFiles(client, config.owner, config.repo, WIKI_PATH);
 
     const entries: WikiEntry[] = [];
 
     // Download each .md file
-    for (const file of data) {
-      if (file.type === 'file' && file.name.endsWith('.md')) {
-        try {
-          const { data: fileData } = await client.repos.getContent({
-            owner: config.owner,
-            repo: config.repo,
-            path: `${WIKI_PATH}/${file.name}`,
-          });
+    for (const file of files) {
+      try {
+        const { data: fileData } = await client.repos.getContent({
+          owner: config.owner,
+          repo: config.repo,
+          path: file.path,
+        });
 
-          if ('content' in fileData) {
-            const content = fromBase64(fileData.content);
-            const title = extractTitleFromMarkdown(content);
-            
-            entries.push({
-              id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-              title,
-              filename: file.name,
-              content,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              syncedAt: new Date().toISOString(),
-            });
-          }
-        } catch (error) {
-          console.error(`Failed to download ${file.name}:`, error);
+        if ('content' in fileData) {
+          const content = fromBase64(fileData.content);
+          
+          // Store relative path from wiki directory
+          const relativePath = file.path.replace(`${WIKI_PATH}/`, '');
+          
+          // Extract title from filename (last part without .md extension)
+          const filenameParts = relativePath.split('/');
+          const lastPart = filenameParts[filenameParts.length - 1];
+          const title = lastPart.replace(/\.md$/, '');
+          
+          entries.push({
+            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+            title,
+            filename: relativePath,
+            content,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            syncedAt: new Date().toISOString(),
+          });
         }
+      } catch (error) {
+        console.error(`Failed to download ${file.path}:`, error);
       }
     }
 

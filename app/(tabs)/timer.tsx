@@ -71,6 +71,16 @@ export default function TimerScreen() {
     try {
       await stopTimer();
       refresh();
+      
+      // Sync to GitHub after stopping timer
+      try {
+        console.log('🔄 Syncing time data to GitHub...');
+        await syncWithGitHub();
+        console.log('✅ Time data synced to GitHub');
+      } catch (syncError) {
+        console.error('⚠️ Failed to sync to GitHub:', syncError);
+        // Don't show error to user - they can manually sync later
+      }
     } catch (error) {
       console.error('Failed to stop timer:', error);
       Alert.alert('Error', 'Failed to stop timer');

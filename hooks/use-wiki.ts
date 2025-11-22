@@ -1,19 +1,20 @@
-import { useState, useEffect, useCallback } from 'react';
-import type { WikiEntry, WikiSearchResult } from '@/types/wiki';
 import {
-  getWikiEntries,
-  getWikiEntry,
-  insertWikiEntry,
-  updateWikiEntry,
-  deleteWikiEntry as deleteWikiEntryDb,
-  searchWikiEntries,
-  generateFilename,
+    deleteWikiEntry as deleteWikiEntryDb,
+    generateFilename,
+    getWikiEntries,
+    getWikiEntry,
+    getWikiEntryByFilename,
+    insertWikiEntry,
+    searchWikiEntries,
+    updateWikiEntry
 } from '@/lib/db/wiki';
 import {
-  downloadWikiEntries,
-  uploadWikiEntry as uploadWikiEntryGh,
-  deleteWikiEntry as deleteWikiEntryGh,
+    deleteWikiEntry as deleteWikiEntryGh,
+    downloadWikiEntries,
+    uploadWikiEntry as uploadWikiEntryGh,
 } from '@/services/github/wiki-sync';
+import type { WikiEntry, WikiSearchResult } from '@/types/wiki';
+import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from './use-auth';
 
 export function useWiki() {
@@ -30,17 +31,25 @@ export function useWiki() {
 
       // Merge GitHub entries with local ones
       for (const entry of githubEntries) {
-        try {
+        // Check if entry already exists by filename
+        const existingByFilename = await getWikiEntryByFilename(entry.filename);
+        
+        if (existingByFilename) {
+          // Update existing entry, preserving the local ID
+          await updateWikiEntry({
+            ...entry,
+            id: existingByFilename.id,
+            createdAt: existingByFilename.createdAt,
+          });
+        } else {
+          // Insert new entry
           await insertWikiEntry(entry);
-        } catch (err) {
-          // Entry might already exist, try update
-          await updateWikiEntry(entry);
         }
       }
 
       console.log('✅ Wiki entries synced from GitHub');
     } catch (err) {
-      console.error('Failed to sync wiki entries from GitHub:', error);
+      console.error('Failed to sync wiki entries from GitHub:', err);
       // Don't throw - sync is optional
     }
   }, [isAuthenticated]);
@@ -82,9 +91,14 @@ export function useWiki() {
 
   const addEntry = useCallback(async (title: string, content: string) => {
     try {
+      // Extract just the filename part if title contains path separators
+      const displayTitle = title.includes('/') 
+        ? title.split('/').filter(p => p.trim()).pop() || title
+        : title;
+      
       const entry: WikiEntry = {
         id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-        title,
+        title: displayTitle,
         filename: generateFilename(title),
         content,
         createdAt: new Date().toISOString(),

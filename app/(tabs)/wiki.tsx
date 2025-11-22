@@ -1,8 +1,10 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useWiki } from '@/hooks/use-wiki';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { useWiki } from '@/hooks/use-wiki';
+import type { WikiEntry } from '@/types/wiki';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -14,8 +16,6 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import type { WikiEntry } from '@/types/wiki';
 
 export default function WikiScreen() {
   const insets = useSafeAreaInsets();
@@ -153,8 +153,6 @@ export default function WikiScreen() {
               activeOpacity={0.7}>
               <View style={styles.entryContent}>
                 <ThemedText style={styles.entryTitle}>{entry.title}</ThemedText>
-                <ThemedText style={styles.entryPreview}>{getPreview(entry.content)}</ThemedText>
-                <ThemedText style={styles.entryDate}>{formatDate(entry.updatedAt)}</ThemedText>
               </View>
               <TouchableOpacity
                 style={styles.deleteButton}
