@@ -1,17 +1,17 @@
 import {
-    deleteWikiEntry as deleteWikiEntryDb,
-    generateFilename,
-    getWikiEntries,
-    getWikiEntry,
-    getWikiEntryByFilename,
-    insertWikiEntry,
-    searchWikiEntries,
-    updateWikiEntry
+  deleteWikiEntry as deleteWikiEntryDb,
+  generateFilename,
+  getWikiEntries,
+  getWikiEntry,
+  getWikiEntryByFilename,
+  insertWikiEntry,
+  searchWikiEntries,
+  updateWikiEntry
 } from '@/lib/db/wiki';
 import {
-    deleteWikiEntry as deleteWikiEntryGh,
-    downloadWikiEntries,
-    uploadWikiEntry as uploadWikiEntryGh,
+  deleteWikiEntry as deleteWikiEntryGh,
+  downloadWikiEntries,
+  uploadWikiEntry as uploadWikiEntryGh,
 } from '@/services/github/wiki-sync';
 import type { WikiEntry, WikiSearchResult } from '@/types/wiki';
 import { useCallback, useEffect, useState } from 'react';
@@ -158,6 +158,36 @@ export function useWiki() {
     }
   }, [loadEntries, syncToGitHub, isAuthenticated]);
 
+  const moveEntry = useCallback(async (id: string, newPath: string) => {
+    try {
+      const existing = await getWikiEntry(id);
+      if (!existing) {
+        throw new Error('Entry not found');
+      }
+
+      // Calculate new filename
+      const newFilename = newPath ? `${newPath}/${existing.title}.md` : `${existing.title}.md`;
+      
+      const updated: WikiEntry = {
+        ...existing,
+        filename: newFilename,
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Delete old file from GitHub if authenticated
+      if (newFilename !== existing.filename && isAuthenticated) {
+        await deleteWikiEntryGh(existing.filename);
+      }
+
+      await updateWikiEntry(updated);
+      await loadEntries();
+      await syncToGitHub(updated);
+    } catch (err) {
+      console.error('Failed to move wiki entry:', err);
+      throw err;
+    }
+  }, [loadEntries, syncToGitHub, isAuthenticated]);
+
   const removeEntry = useCallback(async (id: string) => {
     try {
       const entry = await getWikiEntry(id);
@@ -201,6 +231,7 @@ export function useWiki() {
     error,
     addEntry,
     editEntry,
+    moveEntry,
     removeEntry,
     search,
     refresh,

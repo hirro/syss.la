@@ -22,7 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function WikiScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { entries, loading, search, syncWithGitHub, removeEntry, addEntry, refresh } = useWiki();
+  const { entries, loading, search, syncWithGitHub, removeEntry, addEntry, refresh, moveEntry } = useWiki();
   const primaryColor = useThemeColor({}, 'primary');
   const textColor = useThemeColor({}, 'text');
   const secondaryTextColor = useThemeColor({ light: '#666', dark: '#999' }, 'text');
@@ -37,6 +37,7 @@ export default function WikiScreen() {
   const [currentPath, setCurrentPath] = useState('');
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
+  const [movingItem, setMovingItem] = useState<DirectoryItem | null>(null);
 
   // Reload entries when screen comes into focus
   useFocusEffect(
@@ -181,6 +182,21 @@ export default function WikiScreen() {
     if (!currentPath) return 'Folders';
     const parts = currentPath.split('/');
     return parts[parts.length - 1];
+  };
+
+  const handleMoveItem = async (targetFolderPath: string) => {
+    if (!movingItem || movingItem.type !== 'file') {
+      return;
+    }
+
+    try {
+      await moveEntry(movingItem.entry!.id, targetFolderPath);
+      setMovingItem(null);
+      Alert.alert('Success', `Moved "${movingItem.name}" to "${targetFolderPath || 'root'}"`);
+    } catch (error) {
+      console.error('Failed to move item:', error);
+      Alert.alert('Error', 'Failed to move file');
+    }
   };
 
   const handleDeleteItem = async (item: DirectoryItem) => {
@@ -371,18 +387,46 @@ export default function WikiScreen() {
       ) : (
         <GestureHandlerRootView style={{ flex: 1 }}>
           <ScrollView style={styles.scrollContainer}>
+            {movingItem && (
+              <View style={[styles.moveModeBanner, { backgroundColor: primaryColor }]}>
+                <ThemedText style={styles.moveModeBannerText}>
+                  Moving: {movingItem.name}
+                </ThemedText>
+                <TouchableOpacity onPress={() => setMovingItem(null)}>
+                  <ThemedText style={styles.moveModeCancelText}>Cancel</ThemedText>
+                </TouchableOpacity>
+              </View>
+            )}
             {currentItems.map((item) => (
               <Swipeable
                 key={item.path}
                 renderRightActions={() => renderRightActions(item)}
-                overshootRight={false}>
+                overshootRight={false}
+                enabled={!movingItem}>
                 <TouchableOpacity
-                  style={styles.listItem}
+                  style={[
+                    styles.listItem,
+                    movingItem && item.type === 'folder' && styles.listItemDropTarget,
+                    movingItem?.path === item.path && styles.listItemMoving,
+                  ]}
                   onPress={() => {
-                    if (item.type === 'folder') {
-                      handleFolderClick(item.path);
+                    if (movingItem) {
+                      // In move mode - if clicking a folder, move the item there
+                      if (item.type === 'folder') {
+                        handleMoveItem(item.path);
+                      }
                     } else {
-                      router.push(`/wiki/${item.entry!.id}`);
+                      // Normal mode - navigate
+                      if (item.type === 'folder') {
+                        handleFolderClick(item.path);
+                      } else {
+                        router.push(`/wiki/${item.entry!.id}`);
+                      }
+                    }
+                  }}
+                  onLongPress={() => {
+                    if (item.type === 'file' && !movingItem) {
+                      setMovingItem(item);
                     }
                   }}
                   activeOpacity={0.7}>
@@ -398,7 +442,11 @@ export default function WikiScreen() {
                       <ThemedText style={[styles.itemCount, { color: secondaryTextColor }]}>{item.count}</ThemedText>
                     )}
                   </View>
-                  <Ionicons name="chevron-forward" size={20} color={secondaryTextColor} />
+                  {movingItem && item.type === 'folder' ? (
+                    <Ionicons name="arrow-forward-circle" size={24} color={primaryColor} />
+                  ) : (
+                    <Ionicons name="chevron-forward" size={20} color={secondaryTextColor} />
+                  )}
                 </TouchableOpacity>
               </Swipeable>
             ))}
@@ -584,6 +632,35 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     padding: 8,
+  },
+  moveModeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    marginHorizontal: 20,
+    marginTop: 8,
+    marginBottom: 8,
+    borderRadius: 8,
+  },
+  moveModeBannerText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  moveModeCancelText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
+  listItemDropTarget: {
+    backgroundColor: 'rgba(147, 51, 234, 0.1)',
+    borderLeftWidth: 3,
+    borderLeftColor: '#9333ea',
+  },
+  listItemMoving: {
+    opacity: 0.5,
   },
   modalOverlay: {
     position: 'absolute',
