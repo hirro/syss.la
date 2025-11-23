@@ -364,18 +364,18 @@ export default function WikiScreen() {
       </View>
 
       {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color="#888" style={styles.searchIcon} />
+      <View style={[styles.searchContainer, { backgroundColor: inputBg }]}>
+        <Ionicons name="search" size={20} color={secondaryTextColor} style={styles.searchIcon} />
         <TextInput
-          style={styles.searchInput}
+          style={[styles.searchInput, { color: textColor }]}
           placeholder="Search notes..."
-          placeholderTextColor="#888"
+          placeholderTextColor={secondaryTextColor}
           value={searchQuery}
           onChangeText={handleSearch}
         />
         {searchQuery.length > 0 && (
           <TouchableOpacity onPress={() => handleSearch('')}>
-            <Ionicons name="close-circle" size={20} color="#888" />
+            <Ionicons name="close-circle" size={20} color={secondaryTextColor} />
           </TouchableOpacity>
         )}
       </View>
@@ -571,7 +571,6 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
     borderRadius: 10,
     marginHorizontal: 20,
     marginBottom: 16,
@@ -584,7 +583,6 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#000',
   },
   scrollContainer: {
     flex: 1,
