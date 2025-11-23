@@ -1,6 +1,6 @@
+import { getTodoById, insertTodo, updateTodo } from '@/lib/db/todos';
 import type { Todo } from '@/types/todo';
 import { getOctokit } from './api-client';
-import { insertTodo, updateTodo, getTodoById } from '@/lib/db/todos';
 
 export async function fetchUserIssues(): Promise<Todo[]> {
   const octokit = await getOctokit();
@@ -46,7 +46,7 @@ export async function fetchUserIssues(): Promise<Todo[]> {
       updatedAt: issue.updated_at,
       completedAt: issue.state === 'closed' ? issue.closed_at || issue.updated_at : undefined,
       status: 'open',
-      labels: issue.labels.map((label) =>
+      labels: issue.labels.map((label: { name?: string } | string) =>
         typeof label === 'string' ? label : label.name || ''
       ),
       github: {
