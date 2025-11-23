@@ -26,6 +26,10 @@ export default function EditCustomerScreen() {
   const insets = useSafeAreaInsets();
   const { customers, editCustomer } = useCustomers();
   const primaryColor = useThemeColor({}, 'primary');
+  const textColor = useThemeColor({}, 'text');
+  const inputBg = useThemeColor({ light: 'rgba(0, 0, 0, 0.03)', dark: 'rgba(255, 255, 255, 0.05)' }, 'background');
+  const borderColor = useThemeColor({ light: 'rgba(0, 0, 0, 0.1)', dark: 'rgba(255, 255, 255, 0.1)' }, 'background');
+  const iconColor = useThemeColor({ light: '#666', dark: '#999' }, 'text');
 
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [name, setName] = useState('');
@@ -100,13 +104,13 @@ export default function EditCustomerScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}>
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { borderBottomColor: borderColor }]}>
           <TouchableOpacity onPress={() => router.back()} disabled={saving}>
-            <Ionicons name="close" size={28} color="#666" />
+            <Ionicons name="close" size={28} color={iconColor} />
           </TouchableOpacity>
           <ThemedText type="subtitle">Edit Customer</ThemedText>
           <TouchableOpacity onPress={handleSave} disabled={saving}>
-            <ThemedText style={[styles.saveButton, saving && styles.saveButtonDisabled]}>
+            <ThemedText style={[styles.saveButton, { color: primaryColor }, saving && styles.saveButtonDisabled]}>
               {saving ? 'Saving...' : 'Save'}
             </ThemedText>
           </TouchableOpacity>
@@ -121,7 +125,7 @@ export default function EditCustomerScreen() {
               <View style={styles.inputGroup}>
                 <ThemedText style={styles.label}>Customer Name *</ThemedText>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { backgroundColor: inputBg, borderColor, color: textColor }]}
                   value={name}
                   onChangeText={setName}
                   placeholder="Enter customer name"
@@ -132,7 +136,7 @@ export default function EditCustomerScreen() {
               <View style={styles.inputGroup}>
                 <ThemedText style={styles.label}>Invoice Reference</ThemedText>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { backgroundColor: inputBg, borderColor, color: textColor }]}
                   value={invoiceRef}
                   onChangeText={setInvoiceRef}
                   placeholder="e.g., Customer ID, PO Number"
@@ -149,7 +153,7 @@ export default function EditCustomerScreen() {
                 <View style={[styles.inputGroup, styles.flex1]}>
                   <ThemedText style={styles.label}>Hourly Rate</ThemedText>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: inputBg, borderColor, color: textColor }]}
                     value={rate}
                     onChangeText={setRate}
                     placeholder="0.00"
@@ -161,21 +165,22 @@ export default function EditCustomerScreen() {
                 <View style={[styles.inputGroup, styles.currencyGroup]}>
                   <ThemedText style={styles.label}>Currency</ThemedText>
                   <TouchableOpacity
-                    style={styles.currencyButton}
+                    style={[styles.currencyButton, { backgroundColor: inputBg, borderColor }]}
                     onPress={() => setShowCurrencyPicker(!showCurrencyPicker)}>
                     <ThemedText style={styles.currencyText}>{currency}</ThemedText>
-                    <Ionicons name="chevron-down" size={20} color="#666" />
+                    <Ionicons name="chevron-down" size={20} color={iconColor} />
                   </TouchableOpacity>
                 </View>
               </View>
 
               {showCurrencyPicker && (
-                <View style={styles.currencyPicker}>
+                <View style={[styles.currencyPicker, { backgroundColor: inputBg }]}>
                   {CURRENCIES.map(curr => (
                     <TouchableOpacity
                       key={curr}
                       style={[
                         styles.currencyOption,
+                        { borderBottomColor: borderColor },
                         currency === curr && styles.currencyOptionSelected,
                       ]}
                       onPress={() => {
@@ -200,7 +205,7 @@ export default function EditCustomerScreen() {
               <View style={styles.inputGroup}>
                 <ThemedText style={styles.label}>VAT (%)</ThemedText>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { backgroundColor: inputBg, borderColor, color: textColor }]}
                   value={vat}
                   onChangeText={setVat}
                   placeholder="25"
@@ -212,7 +217,7 @@ export default function EditCustomerScreen() {
               <View style={styles.inputGroup}>
                 <ThemedText style={styles.label}>Cost Place</ThemedText>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { backgroundColor: inputBg, borderColor, color: textColor }]}
                   value={costPlace}
                   onChangeText={setCostPlace}
                   placeholder="e.g., Department, Project Code"
@@ -223,7 +228,7 @@ export default function EditCustomerScreen() {
               <View style={styles.inputGroup}>
                 <ThemedText style={styles.label}>Billing Address</ThemedText>
                 <TextInput
-                  style={[styles.input, styles.textArea]}
+                  style={[styles.input, styles.textArea, { backgroundColor: inputBg, borderColor, color: textColor }]}
                   value={billingAddress}
                   onChangeText={setBillingAddress}
                   placeholder="Enter billing address"
@@ -242,7 +247,7 @@ export default function EditCustomerScreen() {
               <View style={styles.inputGroup}>
                 <ThemedText style={styles.label}>Notes</ThemedText>
                 <TextInput
-                  style={[styles.input, styles.textArea]}
+                  style={[styles.input, styles.textArea, { backgroundColor: inputBg, borderColor, color: textColor }]}
                   value={notes}
                   onChangeText={setNotes}
                   placeholder="Add any additional notes"
@@ -274,12 +279,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
   },
   saveButton: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#166534',
   },
   saveButtonDisabled: {
     opacity: 0.5,
@@ -297,7 +300,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     marginBottom: 16,
-    color: '#1a1a1a',
   },
   inputGroup: {
     marginBottom: 20,
@@ -311,10 +313,8 @@ const styles = StyleSheet.create({
   input: {
     fontSize: 16,
     padding: 14,
-    backgroundColor: 'rgba(0, 0, 0, 0.03)',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
   },
   textArea: {
     minHeight: 100,
@@ -335,10 +335,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 14,
-    backgroundColor: 'rgba(0, 0, 0, 0.03)',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
   },
   currencyText: {
     fontSize: 16,
@@ -347,7 +345,6 @@ const styles = StyleSheet.create({
   currencyPicker: {
     marginTop: -12,
     marginBottom: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.03)',
     borderRadius: 12,
     overflow: 'hidden',
   },
@@ -357,7 +354,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 14,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
   },
   currencyOptionSelected: {
     backgroundColor: 'rgba(147, 51, 234, 0.08)',

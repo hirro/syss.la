@@ -42,6 +42,16 @@ export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
     }
   }
   
+  // TEMPORARY: Force migration to run if rate column doesn't exist
+  if (currentVersion >= 2 && currentVersion < 5) {
+    try {
+      await db.getFirstAsync('SELECT rate FROM customers LIMIT 1');
+    } catch {
+      console.log('⚠️ Rate column missing, forcing migration from version 4...');
+      currentVersion = 4; // Force migration 4 to 5 to run
+    }
+  }
+  
   console.log(`📊 Current database schema version: ${currentVersion}, target: ${SCHEMA_VERSION}`);
 
   // Run migrations if needed
@@ -105,7 +115,41 @@ export async function closeDatabase(): Promise<void> {
 export async function resetDatabase(): Promise<void> {
   await closeDatabase();
   db = null;
+  migrationRun = false;
   await initDatabase();
+}
+
+/**
+ * Force database migration to run again
+ * Useful when schema changes are detected at runtime
+ */
+export async function forceMigration(): Promise<void> {
+  if (!db) {
+    throw new Error('Database not initialized');
+  }
+  
+  console.log('🔄 Forcing migration check...');
+  
+  // Check if rate column exists
+  try {
+    await db.getFirstAsync('SELECT rate FROM customers LIMIT 1');
+    console.log('✅ Rate column exists, no migration needed');
+    return;
+  } catch (error) {
+    console.log('⚠️ Rate column missing, running migration 4→5...');
+  }
+  
+  // Run the migration for version 4 to 5
+  const migration = MIGRATIONS[4]; // Migration from version 4 to 5
+  if (migration) {
+    try {
+      await db.execAsync(migration);
+      console.log('✅ Migration 4→5 completed successfully');
+    } catch (error) {
+      console.error('❌ Migration failed:', error);
+      throw error;
+    }
+  }
 }
 
 /**
