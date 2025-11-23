@@ -15,8 +15,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
+import { runOnJS } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function WikiScreen() {
@@ -314,6 +315,15 @@ export default function WikiScreen() {
     }
   };
 
+  // Pan gesture to go back when swiping right
+  const panGesture = Gesture.Pan()
+    .activeOffsetX([10, 999999]) // Only activate on right swipe (positive X)
+    .onEnd((event) => {
+      if (event.translationX > 100 && currentPath) {
+        runOnJS(handleBackClick)();
+      }
+    });
+
   return (
     <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
@@ -386,7 +396,8 @@ export default function WikiScreen() {
         </View>
       ) : (
         <GestureHandlerRootView style={{ flex: 1 }}>
-          <ScrollView style={styles.scrollContainer}>
+          <GestureDetector gesture={panGesture}>
+            <ScrollView style={styles.scrollContainer}>
             {movingItem && (
               <View style={[styles.moveModeBanner, { backgroundColor: primaryColor }]}>
                 <ThemedText style={styles.moveModeBannerText}>
@@ -402,7 +413,9 @@ export default function WikiScreen() {
                 key={item.path}
                 renderRightActions={() => renderRightActions(item)}
                 overshootRight={false}
-                enabled={!movingItem}>
+                enabled={!movingItem}
+                friction={2}
+                rightThreshold={40}>
                 <TouchableOpacity
                   style={[
                     styles.listItem,
@@ -450,7 +463,8 @@ export default function WikiScreen() {
                 </TouchableOpacity>
               </Swipeable>
             ))}
-          </ScrollView>
+            </ScrollView>
+          </GestureDetector>
         </GestureHandlerRootView>
       )}
 
