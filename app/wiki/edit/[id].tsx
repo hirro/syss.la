@@ -1,18 +1,19 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { getWikiEntry } from '@/lib/db/wiki';
+import { useThemeColor } from '@/hooks/use-theme-color';
 import { useWiki } from '@/hooks/use-wiki';
+import { getWikiEntry } from '@/lib/db/wiki';
 import type { WikiEntry } from '@/types/wiki';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -21,6 +22,10 @@ export default function EditWikiScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { editEntry } = useWiki();
+  const primaryColor = useThemeColor({}, 'primary');
+  const textColor = useThemeColor({}, 'text');
+  const inputBg = useThemeColor({ light: 'rgba(0, 0, 0, 0.02)', dark: 'rgba(255, 255, 255, 0.05)' }, 'background');
+  const borderColor = useThemeColor({ light: 'rgba(0, 0, 0, 0.1)', dark: 'rgba(255, 255, 255, 0.1)' }, 'background');
   
   const [entry, setEntry] = useState<WikiEntry | null>(null);
   const [title, setTitle] = useState('');
@@ -100,13 +105,13 @@ export default function EditWikiScreen() {
   return (
     <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: borderColor }]}>
         <TouchableOpacity onPress={() => router.back()} disabled={saving}>
           <ThemedText style={styles.cancelButton}>Cancel</ThemedText>
         </TouchableOpacity>
         <ThemedText type="subtitle">Edit Entry</ThemedText>
         <TouchableOpacity onPress={handleSave} disabled={saving}>
-          <ThemedText style={[styles.saveButton, saving && styles.saveButtonDisabled]}>
+          <ThemedText style={[styles.saveButton, { color: primaryColor }, saving && styles.saveButtonDisabled]}>
             {saving ? 'Saving...' : 'Save'}
           </ThemedText>
         </TouchableOpacity>
@@ -117,7 +122,7 @@ export default function EditWikiScreen() {
         <View style={styles.editorContainer}>
           <ThemedText style={styles.label}>Title</ThemedText>
           <TextInput
-            style={styles.titleInput}
+            style={[styles.titleInput, { backgroundColor: inputBg, color: textColor }]}
             value={title}
             onChangeText={setTitle}
             placeholder="Enter title..."
@@ -126,7 +131,7 @@ export default function EditWikiScreen() {
 
           <ThemedText style={styles.label}>Content</ThemedText>
           <TextInput
-            style={styles.contentInput}
+            style={[styles.contentInput, { backgroundColor: inputBg, color: textColor }]}
             value={content}
             onChangeText={setContent}
             placeholder="Write your note in markdown..."
@@ -150,7 +155,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
   },
   cancelButton: {
     fontSize: 16,
@@ -158,7 +162,6 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     fontSize: 16,
-    color: '#166534',
     fontWeight: '600',
   },
   saveButtonDisabled: {
@@ -181,7 +184,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 24,
     padding: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.02)',
     borderRadius: 8,
   },
   contentInput: {
@@ -189,7 +191,6 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     minHeight: 400,
     padding: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.02)',
     borderRadius: 8,
   },
   centerContainer: {

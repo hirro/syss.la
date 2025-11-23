@@ -1,5 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { useThemeColor } from '@/hooks/use-theme-color';
 import { useWiki } from '@/hooks/use-wiki';
 import { getWikiEntry } from '@/lib/db/wiki';
 import type { WikiEntry } from '@/types/wiki';
@@ -22,6 +23,9 @@ export default function WikiDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { removeEntry } = useWiki();
+  const primaryColor = useThemeColor({}, 'primary');
+  const textColor = useThemeColor({}, 'text');
+  const backgroundColor = useThemeColor({ light: 'rgba(0, 0, 0, 0.05)', dark: 'rgba(255, 255, 255, 0.1)' }, 'background');
   
   const [entry, setEntry] = useState<WikiEntry | null>(null);
   const [loading, setLoading] = useState(true);
@@ -122,11 +126,11 @@ export default function WikiDetailScreen() {
         {/* Action buttons at top */}
         <View style={styles.actionBar}>
           <TouchableOpacity onPress={() => router.back()} style={styles.actionButton}>
-            <Ionicons name="arrow-back" size={24} color="#007AFF" />
+            <Ionicons name="arrow-back" size={24} color={primaryColor} />
           </TouchableOpacity>
           <View style={styles.actionButtons}>
             <TouchableOpacity onPress={handleEdit} style={styles.actionButton}>
-              <Ionicons name="create-outline" size={24} color="#007AFF" />
+              <Ionicons name="create-outline" size={24} color={primaryColor} />
             </TouchableOpacity>
             <TouchableOpacity onPress={handleDelete} style={styles.actionButton}>
               <Ionicons name="trash-outline" size={24} color="#ef4444" />
@@ -136,7 +140,16 @@ export default function WikiDetailScreen() {
 
         {/* Content */}
         <View style={styles.content}>
-          <Markdown style={markdownStyles}>
+          <Markdown style={{
+            ...markdownStyles,
+            body: { ...markdownStyles.body, color: textColor },
+            heading1: { ...markdownStyles.heading1, color: textColor },
+            heading2: { ...markdownStyles.heading2, color: textColor },
+            heading3: { ...markdownStyles.heading3, color: textColor },
+            paragraph: { ...markdownStyles.paragraph, color: textColor },
+            code_inline: { ...markdownStyles.code_inline, backgroundColor },
+            code_block: { ...markdownStyles.code_block, backgroundColor },
+          }}>
             {entry.content}
           </Markdown>
         </View>

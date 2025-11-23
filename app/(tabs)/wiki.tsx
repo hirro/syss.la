@@ -4,9 +4,8 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import { useWiki } from '@/hooks/use-wiki';
 import type { WikiEntry } from '@/types/wiki';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -23,12 +22,15 @@ export default function WikiScreen() {
   const router = useRouter();
   const { entries, loading, search, syncWithGitHub, removeEntry } = useWiki();
   const primaryColor = useThemeColor({}, 'primary');
+  const textColor = useThemeColor({}, 'text');
+  const secondaryTextColor = useThemeColor({ light: '#666', dark: '#999' }, 'text');
   
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<WikiEntry[]>([]);
   const [syncing, setSyncing] = useState(false);
-  const [collapsedDirs, setCollapsedDirs] = useState<Set<string>>(new Set());
-  const [collapsedStateLoaded, setCollapsedStateLoaded] = useState(false);
+  const [currentPath, setCurrentPath] = useState('');
+  const [showFolderModal, setShowFolderModal] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
 
   const handleSearch = async (query: string) => {
     setSearchQuery(query);
@@ -76,194 +78,90 @@ export default function WikiScreen() {
 
   const displayEntries = searchQuery.trim() ? searchResults : entries;
 
-  // Build tree structure from flat entries
-  interface TreeNode {
+  // Get items in current directory level
+  interface DirectoryItem {
     name: string;
+    type: 'file' | 'folder';
     path: string;
-    type: 'file' | 'directory';
+    count?: number;
     entry?: WikiEntry;
-    children: TreeNode[];
   }
 
-  const buildTree = useCallback((entries: WikiEntry[]): TreeNode[] => {
-    const root: TreeNode[] = [];
-    const dirMap = new Map<string, TreeNode>();
-
+  // Get items in current directory
+  const getCurrentDirectoryItems = useCallback((entries: WikiEntry[], path: string): DirectoryItem[] => {
+    const items = new Map<string, DirectoryItem>();
+    
     entries.forEach(entry => {
-      const parts = entry.filename.split('/');
-      let currentPath = '';
-      let currentLevel = root;
-
-      parts.forEach((part, index) => {
-        const isFile = index === parts.length - 1;
-        currentPath = currentPath ? `${currentPath}/${part}` : part;
-
-        if (isFile) {
-          // Add file node
-          currentLevel.push({
-            name: entry.title,
-            path: currentPath,
-            type: 'file',
-            entry,
-            children: [],
+      const relativePath = entry.filename;
+      
+      // Check if entry is in current path
+      if (path && !relativePath.startsWith(path + '/')) {
+        return;
+      }
+      
+      // Get the part after current path
+      const afterPath = path ? relativePath.substring(path.length + 1) : relativePath;
+      const parts = afterPath.split('/');
+      
+      if (parts.length === 1) {
+        // File in current directory
+        items.set(afterPath, {
+          name: entry.title,
+          type: 'file',
+          path: relativePath,
+          entry,
+        });
+      } else {
+        // Folder in current directory
+        const folderName = parts[0];
+        const folderPath = path ? `${path}/${folderName}` : folderName;
+        
+        if (!items.has(folderName)) {
+          // Count items in this folder
+          const count = entries.filter(e => 
+            e.filename.startsWith(folderPath + '/')
+          ).length;
+          
+          items.set(folderName, {
+            name: folderName,
+            type: 'folder',
+            path: folderPath,
+            count,
           });
-        } else {
-          // Add or get directory node
-          let dirNode = dirMap.get(currentPath);
-          if (!dirNode) {
-            dirNode = {
-              name: part,
-              path: currentPath,
-              type: 'directory',
-              children: [],
-            };
-            dirMap.set(currentPath, dirNode);
-            currentLevel.push(dirNode);
-          }
-          currentLevel = dirNode.children;
         }
-      });
+      }
     });
-
-    // Collapse single-child directories
-    const collapseTree = (nodes: TreeNode[]): TreeNode[] => {
-      return nodes.map(node => {
-        if (node.type === 'directory' && node.children.length === 1) {
-          const child = node.children[0];
-          if (child.type === 'directory') {
-            // Collapse this directory with its single child
-            const collapsed = collapseTree([child])[0];
-            return {
-              ...collapsed,
-              name: `${node.name}/${collapsed.name}`,
-            };
-          }
-        }
-        // Recursively collapse children
-        return {
-          ...node,
-          children: collapseTree(node.children),
-        };
-      });
-    };
-
-    return collapseTree(root);
+    
+    // Sort: folders first, then files, alphabetically
+    return Array.from(items.values()).sort((a, b) => {
+      if (a.type !== b.type) {
+        return a.type === 'folder' ? -1 : 1;
+      }
+      return a.name.localeCompare(b.name);
+    });
   }, []);
 
-  const treeData = useMemo(() => buildTree(displayEntries), [displayEntries, buildTree]);
+  const currentItems = useMemo(() => 
+    getCurrentDirectoryItems(displayEntries, currentPath), 
+    [displayEntries, currentPath, getCurrentDirectoryItems]
+  );
 
-  // Load collapsed state from storage on mount
-  useEffect(() => {
-    const loadCollapsedState = async () => {
-      try {
-        const saved = await AsyncStorage.getItem('wiki_collapsed_dirs');
-        if (saved) {
-          setCollapsedDirs(new Set(JSON.parse(saved)));
-        } else {
-          // Initialize all directories as collapsed
-          const allDirs = new Set<string>();
-          const collectDirs = (nodes: TreeNode[]) => {
-            nodes.forEach(node => {
-              if (node.type === 'directory') {
-                allDirs.add(node.path);
-                collectDirs(node.children);
-              }
-            });
-          };
-          collectDirs(treeData);
-          setCollapsedDirs(allDirs);
-        }
-        setCollapsedStateLoaded(true);
-      } catch (error) {
-        console.error('Failed to load collapsed state:', error);
-        setCollapsedStateLoaded(true);
-      }
-    };
-    loadCollapsedState();
-  }, [treeData]);
-
-  // Save collapsed state whenever it changes
-  useEffect(() => {
-    if (collapsedStateLoaded) {
-      const saveCollapsedState = async () => {
-        try {
-          await AsyncStorage.setItem(
-            'wiki_collapsed_dirs',
-            JSON.stringify(Array.from(collapsedDirs))
-          );
-        } catch (error) {
-          console.error('Failed to save collapsed state:', error);
-        }
-      };
-      saveCollapsedState();
-    }
-  }, [collapsedDirs, collapsedStateLoaded]);
-
-  const toggleDirectory = (path: string) => {
-    setCollapsedDirs(prev => {
-      const next = new Set(prev);
-      if (next.has(path)) {
-        next.delete(path);
-      } else {
-        next.add(path);
-      }
-      return next;
-    });
+  const handleFolderClick = (folderPath: string) => {
+    setCurrentPath(folderPath);
   };
 
-  const renderTree = (nodes: TreeNode[], depth: number): React.ReactNode => {
-    return nodes.map((node) => {
-      if (node.type === 'directory') {
-        const isCollapsed = collapsedDirs.has(node.path);
-        return (
-          <View key={node.path}>
-            <TouchableOpacity
-              style={[styles.directoryItem, { paddingLeft: 20 + depth * 16 }]}
-              onPress={() => toggleDirectory(node.path)}
-              activeOpacity={0.7}>
-              <Ionicons
-                name={isCollapsed ? 'chevron-forward' : 'chevron-down'}
-                size={16}
-                color="#888"
-                style={styles.chevron}
-              />
-              <Ionicons
-                name={isCollapsed ? 'folder' : 'folder-open'}
-                size={20}
-                color={primaryColor}
-                style={styles.folderIcon}
-              />
-              <ThemedText style={styles.directoryName}>{node.name}</ThemedText>
-            </TouchableOpacity>
-            {!isCollapsed && renderTree(node.children, depth + 1)}
-          </View>
-        );
-      } else {
-        return (
-          <TouchableOpacity
-            key={node.entry!.id}
-            style={[styles.fileItem, { paddingLeft: 20 + depth * 16 }]}
-            onPress={() => router.push(`/wiki/${node.entry!.id}`)}
-            activeOpacity={0.7}>
-            <Ionicons
-              name="document-text"
-              size={18}
-              color="#888"
-              style={styles.fileIcon}
-            />
-            <ThemedText style={styles.fileName}>{node.name}</ThemedText>
-            <TouchableOpacity
-              style={styles.deleteButton}
-              onPress={(e) => {
-                e.stopPropagation();
-                handleDelete(node.entry!);
-              }}>
-              <Ionicons name="trash-outline" size={18} color="#ef4444" />
-            </TouchableOpacity>
-          </TouchableOpacity>
-        );
-      }
-    });
+  const handleBackClick = () => {
+    if (currentPath) {
+      const parts = currentPath.split('/');
+      parts.pop();
+      setCurrentPath(parts.join('/'));
+    }
+  };
+
+  const getHeaderTitle = () => {
+    if (!currentPath) return 'Folders';
+    const parts = currentPath.split('/');
+    return parts[parts.length - 1];
   };
 
   const formatDate = (dateString: string) => {
@@ -288,21 +186,63 @@ export default function WikiScreen() {
     return preview + (withoutHeading.length > 100 ? '...' : '');
   };
 
+  const handleCreateFolder = () => {
+    setShowFolderModal(true);
+  };
+
+  const handleSaveFolder = async () => {
+    if (!newFolderName.trim()) {
+      Alert.alert('Error', 'Please enter a folder name');
+      return;
+    }
+    
+    // Create a placeholder file in the folder
+    try {
+      router.push({
+        pathname: '/wiki/new',
+        params: { folderPath: newFolderName.trim() }
+      });
+      setShowFolderModal(false);
+      setNewFolderName('');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to create folder');
+    }
+  };
+
   return (
     <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <ThemedText type="title">Wiki</ThemedText>
-        <TouchableOpacity
-          style={styles.syncButton}
-          onPress={handleSync}
-          disabled={syncing}>
-          <Ionicons
-            name={syncing ? "sync" : "cloud-upload-outline"}
-            size={24}
-            color={primaryColor}
-          />
-        </TouchableOpacity>
+        <View style={styles.headerLeft}>
+          {currentPath && (
+            <TouchableOpacity onPress={handleBackClick} style={styles.backButton}>
+              <Ionicons name="chevron-back" size={28} color={primaryColor} />
+            </TouchableOpacity>
+          )}
+          <ThemedText type="title" style={styles.headerTitle}>{getHeaderTitle()}</ThemedText>
+        </View>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={handleCreateFolder}>
+            <Ionicons name="folder-outline" size={24} color={primaryColor} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={() => router.push('/wiki/new')}>
+            <Ionicons name="create-outline" size={24} color={primaryColor} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={handleSync}
+            disabled={syncing}>
+            <Ionicons
+              name={syncing ? "sync" : "cloud-upload-outline"}
+              size={24}
+              color={primaryColor}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Search Bar */}
@@ -322,12 +262,12 @@ export default function WikiScreen() {
         )}
       </View>
 
-      {/* Entries List */}
+      {/* Items List */}
       {loading ? (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={primaryColor} />
         </View>
-      ) : displayEntries.length === 0 ? (
+      ) : currentItems.length === 0 ? (
         <View style={styles.centerContainer}>
           <ThemedText style={styles.emptyText}>
             {searchQuery.trim() ? 'No results found' : 'No wiki entries yet'}
@@ -338,17 +278,67 @@ export default function WikiScreen() {
         </View>
       ) : (
         <ScrollView style={styles.scrollContainer}>
-          {renderTree(treeData, 0)}
+          {currentItems.map((item) => (
+            <TouchableOpacity
+              key={item.path}
+              style={styles.listItem}
+              onPress={() => {
+                if (item.type === 'folder') {
+                  handleFolderClick(item.path);
+                } else {
+                  router.push(`/wiki/${item.entry!.id}`);
+                }
+              }}
+              activeOpacity={0.7}>
+              <Ionicons
+                name={item.type === 'folder' ? 'folder' : 'document-text'}
+                size={24}
+                color={item.type === 'folder' ? '#FFA500' : '#888'}
+                style={styles.itemIcon}
+              />
+              <View style={styles.itemContent}>
+                <ThemedText style={[styles.itemName, { color: textColor }]}>{item.name}</ThemedText>
+                {item.type === 'folder' && item.count !== undefined && (
+                  <ThemedText style={[styles.itemCount, { color: secondaryTextColor }]}>{item.count}</ThemedText>
+                )}
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={secondaryTextColor} />
+            </TouchableOpacity>
+          ))}
         </ScrollView>
       )}
 
-      {/* FAB */}
-      <TouchableOpacity
-        style={[styles.fab, { backgroundColor: primaryColor }]}
-        onPress={() => router.push('/wiki/new')}
-        activeOpacity={0.8}>
-        <Ionicons name="add" size={28} color="#fff" />
-      </TouchableOpacity>
+      {/* Folder Creation Modal */}
+      {showFolderModal && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <ThemedText style={styles.modalTitle}>New Folder</ThemedText>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Folder name"
+              placeholderTextColor="#999"
+              value={newFolderName}
+              onChangeText={setNewFolderName}
+              autoFocus
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalButton}
+                onPress={() => {
+                  setShowFolderModal(false);
+                  setNewFolderName('');
+                }}>
+                <ThemedText style={styles.modalButtonText}>Cancel</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonPrimary]}
+                onPress={handleSaveFolder}>
+                <ThemedText style={[styles.modalButtonText, styles.modalButtonTextPrimary]}>Create</ThemedText>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
     </ThemedView>
   );
 }
@@ -364,8 +354,59 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 16,
   },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  backButton: {
+    marginRight: 8,
+  },
+  headerTitle: {
+    fontSize: 32,
+    fontWeight: 'bold',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  headerButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   syncButton: {
     padding: 8,
+  },
+  listItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(128, 128, 128, 0.2)',
+  },
+  itemIcon: {
+    marginRight: 12,
+  },
+  itemContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  itemName: {
+    fontSize: 17,
+    fontWeight: '400',
+  },
+  itemCount: {
+    fontSize: 17,
+    marginLeft: 8,
   },
   searchContainer: {
     flexDirection: 'row',
@@ -445,6 +486,59 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     padding: 8,
+  },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '80%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.1)',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    marginBottom: 20,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  modalButtonPrimary: {
+    backgroundColor: '#9333ea',
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalButtonTextPrimary: {
+    color: '#fff',
   },
   fab: {
     position: 'absolute',
