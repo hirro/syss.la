@@ -25,7 +25,7 @@ export default function TabLayout() {
           if (defaultTab === 'timer') {
             router.replace('/(tabs)/timer');
           } else if (defaultTab === 'settings') {
-            router.replace('/(tabs)/explore');
+            router.replace('/(tabs)/settings');
           }
         }
       } catch (error) {
@@ -44,11 +44,11 @@ export default function TabLayout() {
         tabBarButton: HapticTab,
       }}>
       <Tabs.Screen
-        name="index"
+        name="todo"
         options={{
           title: 'Todos',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="checklist" color={color} />,
-          href: isAuthenticated ? '/(tabs)' : null,
+          href: isAuthenticated ? '/(tabs)/todo' : null,
         }}
       />
       <Tabs.Screen
@@ -68,11 +68,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="settings"
         options={{
           title: 'Settings',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="gearshape.fill" color={color} />,
-          href: isAuthenticated ? '/(tabs)/explore' : null,
+          href: isAuthenticated ? '/(tabs)/settings' : null,
         }}
       />
     </Tabs>
