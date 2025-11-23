@@ -161,7 +161,7 @@ export default function LoginWizardScreen() {
   };
 
   const handleComplete = () => {
-    router.replace('/(tabs)');
+    router.replace('/(tabs)/todo');
   };
 
   return (

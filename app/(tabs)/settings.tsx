@@ -7,14 +7,14 @@ import { getCurrentUser } from '@/services/github/api-client';
 import { fullSync, getSyncConfig } from '@/services/sync-service';
 import type { Customer } from '@/types/time';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import { Alert, Modal, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SettingsScreen() {
   const { isAuthenticated, logout } = useAuth();
-  const { customers, addCustomer, editCustomer, archiveCustomer } = useCustomers();
+  const { customers, addCustomer, editCustomer, archiveCustomer, refresh: refreshCustomers } = useCustomers();
   const router = useRouter();
   const [username, setUsername] = useState('');
   const [syncRepo, setSyncRepo] = useState('');
@@ -23,6 +23,13 @@ export default function SettingsScreen() {
   const [customerName, setCustomerName] = useState('');
   const [defaultTab, setDefaultTab] = useState<'todos' | 'timer'>('todos');
   const insets = useSafeAreaInsets();
+
+  // Refresh customers when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      refreshCustomers();
+    }, [refreshCustomers])
+  );
 
   useEffect(() => {
     const loadUserData = async () => {
@@ -96,7 +103,7 @@ export default function SettingsScreen() {
               setSyncRepo('');
               
               // Navigate to Todos tab to show authentication required screen
-              router.replace('/(tabs)');
+              router.replace('/(tabs)/todo');
             } catch (error) {
               console.error('❌ Failed to clear data:', error);
               alert('Failed to clear local data. Please try again.');

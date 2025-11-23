@@ -9,24 +9,24 @@ import type { TimeEntry } from '@/types/time';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Accelerometer } from 'expo-sensors';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-    Alert,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TimerScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { customers } = useCustomers();
+  const { customers, refresh: refreshCustomers } = useCustomers();
   const { activeTimer, elapsedTime, startTimer, stopTimer } = useTimer();
   const { entriesByDate, formatTotalDuration, refresh, syncWithGitHub } = useTimeEntries();
   const primaryColor = useThemeColor({}, 'primary');
@@ -42,6 +42,13 @@ export default function TimerScreen() {
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
   const [syncing, setSyncing] = useState(false);
+
+  // Refresh customers when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      refreshCustomers();
+    }, [refreshCustomers])
+  );
 
   const handleSync = async () => {
     try {
@@ -307,7 +314,7 @@ export default function TimerScreen() {
         // Any flick -> toggle to todos
         hasNavigated.current = true;
         lastFlickTime.current = now;
-        router.push('/');
+        router.push('/(tabs)/todo');
       }
     });
 
