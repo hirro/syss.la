@@ -6,14 +6,15 @@ import { getWikiEntry } from '@/lib/db/wiki';
 import type { WikiEntry } from '@/types/wiki';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import type { ImageStyle } from 'react-native';
 import {
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    ScrollView,
+    StyleSheet,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import Markdown from 'react-native-markdown-display';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -80,7 +81,8 @@ export default function WikiDetailScreen() {
               await removeEntry(entry.id);
               router.back();
             } catch (error) {
-              Alert.alert('Error', 'Failed to delete entry');
+              console.error('Failed to delete wiki entry:', error);
+              Alert.alert('Error', `Failed to delete entry: ${error instanceof Error ? error.message : 'Unknown error'}`);
             }
           },
         },
@@ -140,7 +142,8 @@ export default function WikiDetailScreen() {
 
         {/* Content */}
         <View style={styles.content}>
-          <Markdown style={{
+          <Markdown 
+          style={{
             ...markdownStyles,
             body: { ...markdownStyles.body, color: textColor },
             heading1: { ...markdownStyles.heading1, color: textColor },
@@ -149,7 +152,9 @@ export default function WikiDetailScreen() {
             paragraph: { ...markdownStyles.paragraph, color: textColor },
             code_inline: { ...markdownStyles.code_inline, backgroundColor },
             code_block: { ...markdownStyles.code_block, backgroundColor },
-          }}>
+            image: markdownStyles.image,
+          }}
+        >
             {entry.content}
           </Markdown>
         </View>
@@ -242,4 +247,10 @@ const markdownStyles = {
   list_item: {
     marginBottom: 4,
   },
+  image: {
+    width: '100%',
+    height: 200,
+    resizeMode: 'contain' as const,
+    marginVertical: 8,
+  } as ImageStyle,
 };
