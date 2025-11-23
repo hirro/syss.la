@@ -27,6 +27,9 @@ export default function TabLayout() {
           } else if (defaultTab === 'settings') {
             router.replace('/(tabs)/settings');
           }
+        } else {
+          // Default to todo tab
+          router.replace('/(tabs)/todo');
         }
       } catch (error) {
         console.error('Failed to load default tab:', error);
@@ -43,6 +46,12 @@ export default function TabLayout() {
         headerShown: false,
         tabBarButton: HapticTab,
       }}>
+      <Tabs.Screen
+        name="index"
+        options={{
+          href: null, // Hidden redirect screen
+        }}
+      />
       <Tabs.Screen
         name="todo"
         options={{

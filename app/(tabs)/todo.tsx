@@ -12,14 +12,14 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { Accelerometer } from 'expo-sensors';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -76,7 +76,7 @@ export default function TodosScreen() {
         // Any flick -> toggle to timer
         hasNavigated.current = true;
         lastFlickTime.current = now;
-        router.push('/timer');
+        router.push('/(tabs)/timer');
       }
     });
 
@@ -476,9 +476,10 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    justifyContent: 'space-between',
+    padding: 20,
+    paddingBottom: 16,
   },
   emptyState: {
     flex: 1,
