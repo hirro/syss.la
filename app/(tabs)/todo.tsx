@@ -6,7 +6,7 @@ import { useTodos } from '@/hooks/use-todos';
 import { syncGitHubIssues } from '@/services/github/issues';
 import { fullSync } from '@/services/sync-service';
 import type { Todo } from '@/types/todo';
-import { MaterialIcons, Octicons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons, Octicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Accelerometer } from 'expo-sensors';
@@ -98,6 +98,7 @@ export default function TodosScreen() {
   }, [isAuthenticated, refresh]);
   
   const cardBackground = useThemeColor({}, 'background');
+  const primaryColor = useThemeColor({}, 'primary');
 
   // Available icons for personal todos
   const availableIcons = [
@@ -285,10 +286,21 @@ export default function TodosScreen() {
   return (
     <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <ThemedText type="title">Todos</ThemedText>
-        <TouchableOpacity onPress={handleSync} disabled={syncing || !isAuthenticated}>
-          <ThemedText type="link">{syncing ? 'Syncing...' : 'Sync'}</ThemedText>
-        </TouchableOpacity>
+        <View style={styles.headerLeft}>
+          <ThemedText type="title" style={styles.headerTitle}>Todos</ThemedText>
+        </View>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={handleSync}
+            disabled={syncing || !isAuthenticated}>
+            {syncing ? (
+              <Ionicons name="sync" size={24} color={primaryColor} />
+            ) : (
+              <Ionicons name="cloud-upload-outline" size={24} color={primaryColor} />
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView style={styles.scrollContainer}>
@@ -471,8 +483,7 @@ export default function TodosScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    padding: 20,
+    flex: 1
   },
   header: {
     flexDirection: 'row',
@@ -480,6 +491,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 20,
     paddingBottom: 16,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 32,
+    fontWeight: 'bold',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  headerButton: {
+    padding: 8,
   },
   emptyState: {
     flex: 1,
