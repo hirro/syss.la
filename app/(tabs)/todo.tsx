@@ -300,6 +300,11 @@ export default function TodosScreen() {
               <Ionicons name="cloud-upload-outline" size={24} color={primaryColor} />
             )}
           </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={() => router.push('/(tabs)/settings')}>
+            <Ionicons name="settings-outline" size={24} color={primaryColor} />
+          </TouchableOpacity>
         </View>
       </View>
 

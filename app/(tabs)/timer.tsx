@@ -326,16 +326,23 @@ export default function TimerScreen() {
       {/* Header */}
       <View style={styles.header}>
         <ThemedText type="title">Timer</ThemedText>
-        <TouchableOpacity
-          style={styles.syncButton}
-          onPress={handleSync}
-          disabled={syncing}>
-          <Ionicons
-            name={syncing ? "sync" : "cloud-upload-outline"}
-            size={24}
-            color={primaryColor}
-          />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.syncButton}
+            onPress={handleSync}
+            disabled={syncing}>
+            <Ionicons
+              name={syncing ? "sync" : "cloud-upload-outline"}
+              size={24}
+              color={primaryColor}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.syncButton}
+            onPress={() => router.push('/(tabs)/settings')}>
+            <Ionicons name="settings-outline" size={24} color={primaryColor} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Time Entries List */}
@@ -666,6 +673,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 20,
     paddingBottom: 16,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   syncButton: {
     padding: 8,
