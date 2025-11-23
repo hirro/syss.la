@@ -49,7 +49,7 @@ export default function WikiScreen() {
 
   const handleSearch = async (query: string) => {
     setSearchQuery(query);
-    if (query.trim()) {
+    if (query.trim().length >= 1) {
       const results = await search(query);
       setSearchResults(results.map(r => r.entry));
     } else {
@@ -91,7 +91,8 @@ export default function WikiScreen() {
     );
   };
 
-  const displayEntries = searchQuery.trim() ? searchResults : entries;
+  const displayEntries = searchQuery.trim().length >= 1 ? searchResults : entries;
+  const isSearching = searchQuery.trim().length >= 1;
 
   // Get items in current directory level
   interface DirectoryItem {
@@ -162,10 +163,21 @@ export default function WikiScreen() {
     });
   }, []);
 
-  const currentItems = useMemo(() => 
-    getCurrentDirectoryItems(displayEntries, currentPath), 
-    [displayEntries, currentPath, getCurrentDirectoryItems]
-  );
+  // When searching, show flat list of all results. Otherwise show current directory items
+  const currentItems = useMemo(() => {
+    if (isSearching) {
+      // Flat list of all search results, excluding .syssla files
+      return displayEntries
+        .filter(entry => entry.title !== '.syssla' && !entry.filename.endsWith('/.syssla.md'))
+        .map(entry => ({
+          name: entry.title,
+          type: 'file' as const,
+          path: entry.filename,
+          entry,
+        }));
+    }
+    return getCurrentDirectoryItems(displayEntries, currentPath);
+  }, [displayEntries, currentPath, getCurrentDirectoryItems, isSearching]);
 
   const handleFolderClick = (folderPath: string) => {
     setCurrentPath(folderPath);
@@ -180,6 +192,7 @@ export default function WikiScreen() {
   };
 
   const getHeaderTitle = () => {
+    if (isSearching) return 'Search Results';
     if (!currentPath) return 'Folders';
     const parts = currentPath.split('/');
     return parts[parts.length - 1];
@@ -329,7 +342,7 @@ export default function WikiScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          {currentPath && (
+          {currentPath && !isSearching && (
             <TouchableOpacity onPress={handleBackClick} style={styles.backButton}>
               <Ionicons name="chevron-back" size={28} color={primaryColor} />
             </TouchableOpacity>
@@ -388,10 +401,14 @@ export default function WikiScreen() {
       ) : currentItems.length === 0 ? (
         <View style={styles.centerContainer}>
           <ThemedText style={styles.emptyText}>
-            {searchQuery.trim() ? 'No results found' : 'No wiki entries yet'}
+            {searchQuery.trim().length >= 1
+              ? 'No results found'
+              : 'No wiki entries yet'}
           </ThemedText>
           <ThemedText style={styles.emptySubtext}>
-            {searchQuery.trim() ? 'Try a different search' : 'Tap + to create your first note'}
+            {searchQuery.trim().length >= 1
+              ? 'Try a different search'
+              : 'Tap + to create your first note'}
           </ThemedText>
         </View>
       ) : (

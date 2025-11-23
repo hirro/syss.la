@@ -142,6 +142,9 @@ export async function searchWikiEntries(query: string): Promise<WikiSearchResult
 
   const db = await getDatabase();
   
+  // Add wildcard prefix to enable partial matching (e.g., "Jim" matches "Jimpa")
+  const searchQuery = query.trim().split(/\s+/).map(term => `${term}*`).join(' ');
+  
   // Use FTS5 MATCH for full-text search
   const result = await db.getAllAsync<{
     id: string;
@@ -162,7 +165,7 @@ export async function searchWikiEntries(query: string): Promise<WikiSearchResult
      JOIN wiki_fts ON wiki_fts.rowid = w.rowid
      WHERE wiki_fts MATCH ?
      ORDER BY rank`,
-    [query]
+    [searchQuery]
   );
 
   return result.map(row => ({
