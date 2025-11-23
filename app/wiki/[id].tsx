@@ -4,15 +4,15 @@ import { useWiki } from '@/hooks/use-wiki';
 import { getWikiEntry } from '@/lib/db/wiki';
 import type { WikiEntry } from '@/types/wiki';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    ScrollView,
-    StyleSheet,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import Markdown from 'react-native-markdown-display';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -43,6 +43,22 @@ export default function WikiDetailScreen() {
 
     loadEntry();
   }, [id]);
+
+  // Get display title from filename
+  const getDisplayTitle = () => {
+    if (!entry) return 'Wiki';
+    
+    // Remove .md extension
+    const pathWithoutExt = entry.filename.replace(/\.md$/, '');
+    
+    // If it has a directory structure, show the path
+    if (pathWithoutExt.includes('/')) {
+      return pathWithoutExt;
+    }
+    
+    // Otherwise just show the title
+    return entry.title;
+  };
 
   const handleDelete = () => {
     if (!entry) return;
@@ -94,6 +110,12 @@ export default function WikiDetailScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      <Stack.Screen 
+        options={{
+          title: getDisplayTitle(),
+          headerShown: true,
+        }}
+      />
       <ScrollView 
         style={styles.scrollContainer}
         contentContainerStyle={styles.scrollContent}>
