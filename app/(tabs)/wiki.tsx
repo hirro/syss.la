@@ -4,7 +4,7 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import { useWiki } from '@/hooks/use-wiki';
 import type { WikiEntry } from '@/types/wiki';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -15,15 +15,21 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function WikiScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { entries, loading, search, syncWithGitHub, removeEntry } = useWiki();
+  const { entries, loading, search, syncWithGitHub, removeEntry, addEntry, refresh } = useWiki();
   const primaryColor = useThemeColor({}, 'primary');
   const textColor = useThemeColor({}, 'text');
   const secondaryTextColor = useThemeColor({ light: '#666', dark: '#999' }, 'text');
+  const modalBg = useThemeColor({ light: '#fff', dark: '#1c1c1e' }, 'background');
+  const inputBg = useThemeColor({ light: 'rgba(0, 0, 0, 0.02)', dark: 'rgba(255, 255, 255, 0.05)' }, 'background');
+  const borderColor = useThemeColor({ light: 'rgba(0, 0, 0, 0.1)', dark: 'rgba(255, 255, 255, 0.1)' }, 'background');
+  const buttonBg = useThemeColor({ light: 'rgba(0, 0, 0, 0.05)', dark: 'rgba(255, 255, 255, 0.1)' }, 'background');
   
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<WikiEntry[]>([]);
@@ -31,6 +37,13 @@ export default function WikiScreen() {
   const [currentPath, setCurrentPath] = useState('');
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
+
+  // Reload entries when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+    }, [refresh])
+  );
 
   const handleSearch = async (query: string) => {
     setSearchQuery(query);
@@ -93,6 +106,7 @@ export default function WikiScreen() {
     
     entries.forEach(entry => {
       const relativePath = entry.filename;
+      const isSysslaFile = entry.title === '.syssla' || entry.filename.endsWith('/.syssla.md');
       
       // Check if entry is in current path
       if (path && !relativePath.startsWith(path + '/')) {
@@ -104,7 +118,10 @@ export default function WikiScreen() {
       const parts = afterPath.split('/');
       
       if (parts.length === 1) {
-        // File in current directory
+        // File in current directory - skip .syssla files
+        if (isSysslaFile) {
+          return;
+        }
         items.set(afterPath, {
           name: entry.title,
           type: 'file',
@@ -117,9 +134,11 @@ export default function WikiScreen() {
         const folderPath = path ? `${path}/${folderName}` : folderName;
         
         if (!items.has(folderName)) {
-          // Count items in this folder
+          // Count items in this folder (excluding .syssla files)
           const count = entries.filter(e => 
-            e.filename.startsWith(folderPath + '/')
+            e.filename.startsWith(folderPath + '/') && 
+            e.title !== '.syssla' && 
+            !e.filename.endsWith('/.syssla.md')
           ).length;
           
           items.set(folderName, {
@@ -164,6 +183,69 @@ export default function WikiScreen() {
     return parts[parts.length - 1];
   };
 
+  const handleDeleteItem = async (item: DirectoryItem) => {
+    if (item.type === 'folder') {
+      // Delete all entries in this folder
+      Alert.alert(
+        'Delete Folder',
+        `Are you sure you want to delete "${item.name}" and all its contents?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                // Find all entries in this folder
+                const entriesToDelete = entries.filter(e => 
+                  e.filename.startsWith(item.path + '/')
+                );
+                
+                // Delete each entry
+                for (const entry of entriesToDelete) {
+                  await removeEntry(entry.id);
+                }
+              } catch (error) {
+                Alert.alert('Error', 'Failed to delete folder');
+              }
+            },
+          },
+        ]
+      );
+    } else if (item.entry) {
+      // Delete single file
+      Alert.alert(
+        'Delete Entry',
+        `Are you sure you want to delete "${item.name}"?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await removeEntry(item.entry!.id);
+              } catch (error) {
+                Alert.alert('Error', 'Failed to delete entry');
+              }
+            },
+          },
+        ]
+      );
+    }
+  };
+
+  const renderRightActions = (item: DirectoryItem) => {
+    return (
+      <TouchableOpacity
+        style={styles.deleteAction}
+        onPress={() => handleDeleteItem(item)}>
+        <Ionicons name="trash-outline" size={24} color="#fff" />
+        <ThemedText style={styles.deleteActionText}>Delete</ThemedText>
+      </TouchableOpacity>
+    );
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -196,15 +278,22 @@ export default function WikiScreen() {
       return;
     }
     
-    // Create a placeholder file in the folder
+    // Create a hidden .syssla file in the folder to make it exist in GitHub
     try {
-      router.push({
-        pathname: '/wiki/new',
-        params: { folderPath: newFolderName.trim() }
-      });
+      const folderPath = currentPath 
+        ? `${currentPath}/${newFolderName.trim()}`
+        : newFolderName.trim();
+      
+      // Create the hidden file with folder path
+      await addEntry(`${folderPath}/.syssla`, '# Folder placeholder\n\nThis file ensures the folder exists in GitHub.');
+      
+      // Close modal and clear input
       setShowFolderModal(false);
       setNewFolderName('');
+      
+      // Note: addEntry already calls loadEntries() which updates the entries state
     } catch (error) {
+      console.error('Failed to create folder:', error);
       Alert.alert('Error', 'Failed to create folder');
     }
   };
@@ -229,7 +318,10 @@ export default function WikiScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.headerButton}
-            onPress={() => router.push('/wiki/new')}>
+            onPress={() => router.push({
+              pathname: '/wiki/new',
+              params: { folderPath: currentPath }
+            })}>
             <Ionicons name="create-outline" size={24} color={primaryColor} />
           </TouchableOpacity>
           <TouchableOpacity
@@ -277,44 +369,50 @@ export default function WikiScreen() {
           </ThemedText>
         </View>
       ) : (
-        <ScrollView style={styles.scrollContainer}>
-          {currentItems.map((item) => (
-            <TouchableOpacity
-              key={item.path}
-              style={styles.listItem}
-              onPress={() => {
-                if (item.type === 'folder') {
-                  handleFolderClick(item.path);
-                } else {
-                  router.push(`/wiki/${item.entry!.id}`);
-                }
-              }}
-              activeOpacity={0.7}>
-              <Ionicons
-                name={item.type === 'folder' ? 'folder' : 'document-text'}
-                size={24}
-                color={item.type === 'folder' ? '#FFA500' : '#888'}
-                style={styles.itemIcon}
-              />
-              <View style={styles.itemContent}>
-                <ThemedText style={[styles.itemName, { color: textColor }]}>{item.name}</ThemedText>
-                {item.type === 'folder' && item.count !== undefined && (
-                  <ThemedText style={[styles.itemCount, { color: secondaryTextColor }]}>{item.count}</ThemedText>
-                )}
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={secondaryTextColor} />
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <ScrollView style={styles.scrollContainer}>
+            {currentItems.map((item) => (
+              <Swipeable
+                key={item.path}
+                renderRightActions={() => renderRightActions(item)}
+                overshootRight={false}>
+                <TouchableOpacity
+                  style={styles.listItem}
+                  onPress={() => {
+                    if (item.type === 'folder') {
+                      handleFolderClick(item.path);
+                    } else {
+                      router.push(`/wiki/${item.entry!.id}`);
+                    }
+                  }}
+                  activeOpacity={0.7}>
+                  <Ionicons
+                    name={item.type === 'folder' ? 'folder' : 'document-text'}
+                    size={24}
+                    color={item.type === 'folder' ? '#FFA500' : '#888'}
+                    style={styles.itemIcon}
+                  />
+                  <View style={styles.itemContent}>
+                    <ThemedText style={[styles.itemName, { color: textColor }]}>{item.name}</ThemedText>
+                    {item.type === 'folder' && item.count !== undefined && (
+                      <ThemedText style={[styles.itemCount, { color: secondaryTextColor }]}>{item.count}</ThemedText>
+                    )}
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color={secondaryTextColor} />
+                </TouchableOpacity>
+              </Swipeable>
+            ))}
+          </ScrollView>
+        </GestureHandlerRootView>
       )}
 
       {/* Folder Creation Modal */}
       {showFolderModal && (
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { backgroundColor: modalBg }]}>
             <ThemedText style={styles.modalTitle}>New Folder</ThemedText>
             <TextInput
-              style={styles.modalInput}
+              style={[styles.modalInput, { backgroundColor: inputBg, borderColor, color: textColor }]}
               placeholder="Folder name"
               placeholderTextColor="#999"
               value={newFolderName}
@@ -323,7 +421,7 @@ export default function WikiScreen() {
             />
             <View style={styles.modalButtons}>
               <TouchableOpacity
-                style={styles.modalButton}
+                style={[styles.modalButton, { backgroundColor: buttonBg }]}
                 onPress={() => {
                   setShowFolderModal(false);
                   setNewFolderName('');
@@ -331,7 +429,7 @@ export default function WikiScreen() {
                 <ThemedText style={styles.modalButtonText}>Cancel</ThemedText>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonPrimary]}
+                style={[styles.modalButton, { backgroundColor: primaryColor }]}
                 onPress={handleSaveFolder}>
                 <ThemedText style={[styles.modalButtonText, styles.modalButtonTextPrimary]}>Create</ThemedText>
               </TouchableOpacity>
@@ -499,7 +597,6 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   modalContent: {
-    backgroundColor: '#fff',
     borderRadius: 16,
     padding: 24,
     width: '80%',
@@ -513,7 +610,6 @@ const styles = StyleSheet.create({
   },
   modalInput: {
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
@@ -528,10 +624,6 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-  },
-  modalButtonPrimary: {
-    backgroundColor: '#9333ea',
   },
   modalButtonText: {
     fontSize: 16,
@@ -554,5 +646,18 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 5,
+  },
+  deleteAction: {
+    backgroundColor: '#ef4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
+    height: '100%',
+  },
+  deleteActionText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
   },
 });
