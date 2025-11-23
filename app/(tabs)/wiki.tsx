@@ -123,7 +123,29 @@ export default function WikiScreen() {
       });
     });
 
-    return root;
+    // Collapse single-child directories
+    const collapseTree = (nodes: TreeNode[]): TreeNode[] => {
+      return nodes.map(node => {
+        if (node.type === 'directory' && node.children.length === 1) {
+          const child = node.children[0];
+          if (child.type === 'directory') {
+            // Collapse this directory with its single child
+            const collapsed = collapseTree([child])[0];
+            return {
+              ...collapsed,
+              name: `${node.name}/${collapsed.name}`,
+            };
+          }
+        }
+        // Recursively collapse children
+        return {
+          ...node,
+          children: collapseTree(node.children),
+        };
+      });
+    };
+
+    return collapseTree(root);
   }, []);
 
   const treeData = useMemo(() => buildTree(displayEntries), [displayEntries, buildTree]);
