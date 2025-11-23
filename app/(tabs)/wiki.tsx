@@ -4,8 +4,9 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import { useWiki } from '@/hooks/use-wiki';
 import type { WikiEntry } from '@/types/wiki';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -27,6 +28,7 @@ export default function WikiScreen() {
   const [searchResults, setSearchResults] = useState<WikiEntry[]>([]);
   const [syncing, setSyncing] = useState(false);
   const [collapsedDirs, setCollapsedDirs] = useState<Set<string>>(new Set());
+  const [collapsedStateLoaded, setCollapsedStateLoaded] = useState(false);
 
   const handleSearch = async (query: string) => {
     setSearchQuery(query);
@@ -149,6 +151,53 @@ export default function WikiScreen() {
   }, []);
 
   const treeData = useMemo(() => buildTree(displayEntries), [displayEntries, buildTree]);
+
+  // Load collapsed state from storage on mount
+  useEffect(() => {
+    const loadCollapsedState = async () => {
+      try {
+        const saved = await AsyncStorage.getItem('wiki_collapsed_dirs');
+        if (saved) {
+          setCollapsedDirs(new Set(JSON.parse(saved)));
+        } else {
+          // Initialize all directories as collapsed
+          const allDirs = new Set<string>();
+          const collectDirs = (nodes: TreeNode[]) => {
+            nodes.forEach(node => {
+              if (node.type === 'directory') {
+                allDirs.add(node.path);
+                collectDirs(node.children);
+              }
+            });
+          };
+          collectDirs(treeData);
+          setCollapsedDirs(allDirs);
+        }
+        setCollapsedStateLoaded(true);
+      } catch (error) {
+        console.error('Failed to load collapsed state:', error);
+        setCollapsedStateLoaded(true);
+      }
+    };
+    loadCollapsedState();
+  }, [treeData]);
+
+  // Save collapsed state whenever it changes
+  useEffect(() => {
+    if (collapsedStateLoaded) {
+      const saveCollapsedState = async () => {
+        try {
+          await AsyncStorage.setItem(
+            'wiki_collapsed_dirs',
+            JSON.stringify(Array.from(collapsedDirs))
+          );
+        } catch (error) {
+          console.error('Failed to save collapsed state:', error);
+        }
+      };
+      saveCollapsedState();
+    }
+  }, [collapsedDirs, collapsedStateLoaded]);
 
   const toggleDirectory = (path: string) => {
     setCollapsedDirs(prev => {
