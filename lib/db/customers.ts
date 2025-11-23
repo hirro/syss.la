@@ -16,6 +16,11 @@ export async function getCustomers(includeArchived = false): Promise<Customer[]>
     archived: row.archived === 1,
     invoiceRef: row.invoice_ref,
     notes: row.notes,
+    rate: row.rate,
+    currency: row.currency,
+    vat: row.vat,
+    billingAddress: row.billing_address,
+    costPlace: row.cost_place,
   }));
 }
 
@@ -35,6 +40,11 @@ export async function getCustomer(id: string): Promise<Customer | null> {
     archived: row.archived === 1,
     invoiceRef: row.invoice_ref,
     notes: row.notes,
+    rate: row.rate,
+    currency: row.currency,
+    vat: row.vat,
+    billingAddress: row.billing_address,
+    costPlace: row.cost_place,
   };
 }
 
@@ -42,13 +52,19 @@ export async function insertCustomer(customer: Customer): Promise<void> {
   const db = await getDatabase();
   
   await db.runAsync(
-    'INSERT INTO customers (id, name, archived, invoice_ref, notes) VALUES (?, ?, ?, ?, ?)',
+    `INSERT INTO customers (id, name, archived, invoice_ref, notes, rate, currency, vat, billing_address, cost_place) 
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       customer.id,
       customer.name,
       customer.archived ? 1 : 0,
       customer.invoiceRef || null,
       customer.notes || null,
+      customer.rate || null,
+      customer.currency || 'SEK',
+      customer.vat !== undefined ? customer.vat : 25.0,
+      customer.billingAddress || null,
+      customer.costPlace || null,
     ]
   );
 }
@@ -57,12 +73,19 @@ export async function updateCustomer(customer: Customer): Promise<void> {
   const db = await getDatabase();
   
   await db.runAsync(
-    'UPDATE customers SET name = ?, archived = ?, invoice_ref = ?, notes = ? WHERE id = ?',
+    `UPDATE customers SET name = ?, archived = ?, invoice_ref = ?, notes = ?, 
+     rate = ?, currency = ?, vat = ?, billing_address = ?, cost_place = ? 
+     WHERE id = ?`,
     [
       customer.name,
       customer.archived ? 1 : 0,
       customer.invoiceRef || null,
       customer.notes || null,
+      customer.rate || null,
+      customer.currency || 'SEK',
+      customer.vat !== undefined ? customer.vat : 25.0,
+      customer.billingAddress || null,
+      customer.costPlace || null,
       customer.id,
     ]
   );

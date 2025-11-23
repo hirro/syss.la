@@ -118,9 +118,7 @@ export default function SettingsScreen() {
   };
 
   const handleEditCustomer = (customer: Customer) => {
-    setEditingCustomer(customer);
-    setCustomerName(customer.name);
-    setShowCustomerModal(true);
+    router.push(`/customer/${customer.id}`);
   };
 
   const handleSaveCustomer = async () => {

@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 export const CREATE_TABLES = `
 -- Todos table
@@ -30,7 +30,12 @@ CREATE TABLE IF NOT EXISTS customers (
   name TEXT NOT NULL,
   archived INTEGER DEFAULT 0,
   invoice_ref TEXT,
-  notes TEXT
+  notes TEXT,
+  rate REAL,
+  currency TEXT DEFAULT 'SEK',
+  vat REAL DEFAULT 25.0,
+  billing_address TEXT,
+  cost_place TEXT
 );
 
 -- Projects table
@@ -153,5 +158,15 @@ export const MIGRATIONS = [
   -- Wiki entries table already created in CREATE_TABLES
   -- This migration is a no-op since we use IF NOT EXISTS
   SELECT 1;
+  `,
+  
+  // Migration 4 to 5: Add invoice-related columns to customers
+  `
+  -- Add new columns to customers table for invoicing
+  ALTER TABLE customers ADD COLUMN rate REAL;
+  ALTER TABLE customers ADD COLUMN currency TEXT DEFAULT 'SEK';
+  ALTER TABLE customers ADD COLUMN vat REAL DEFAULT 25.0;
+  ALTER TABLE customers ADD COLUMN billing_address TEXT;
+  ALTER TABLE customers ADD COLUMN cost_place TEXT;
   `,
 ];

@@ -4,6 +4,11 @@ export interface Customer {
   archived?: boolean;
   invoiceRef?: string;
   notes?: string;
+  rate?: number;
+  currency?: string;
+  vat?: number;
+  billingAddress?: string;
+  costPlace?: string;
 }
 
 export interface Project {
