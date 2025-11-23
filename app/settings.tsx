@@ -2,14 +2,18 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useAuth } from '@/hooks/use-auth';
 import { useCustomers } from '@/hooks/use-customers';
+import { useThemeColor } from '@/hooks/use-theme-color';
 import { clearAllDatabaseTables } from '@/lib/db/client';
 import { getCurrentUser } from '@/services/github/api-client';
 import { fullSync, getSyncConfig } from '@/services/sync-service';
 import type { Customer } from '@/types/time';
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Modal, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { runOnJS } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SettingsScreen() {
@@ -23,6 +27,7 @@ export default function SettingsScreen() {
   const [customerName, setCustomerName] = useState('');
   const [defaultTab, setDefaultTab] = useState<'todos' | 'timer'>('todos');
   const insets = useSafeAreaInsets();
+  const primaryColor = useThemeColor({}, 'primary');
 
   // Refresh customers when screen comes into focus
   useFocusEffect(
@@ -102,7 +107,8 @@ export default function SettingsScreen() {
               setUsername('');
               setSyncRepo('');
               
-              // Navigate to Todos tab to show authentication required screen
+              // Navigate back and then to Todos tab
+              router.back();
               router.replace('/(tabs)/todo');
             } catch (error) {
               console.error('❌ Failed to clear data:', error);
@@ -177,129 +183,151 @@ export default function SettingsScreen() {
     );
   };
 
+  // Swipe right gesture to close
+  const swipeGesture = Gesture.Pan()
+    .activeOffsetX([10, 999999]) // Only activate on right swipe (positive X)
+    .onEnd((event) => {
+      if (event.translationX > 100) {
+        runOnJS(router.back)();
+      }
+    });
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingTop: insets.top }}>
-      <ThemedView style={styles.content}>
-        <ThemedText type="title">Settings</ThemedText>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <GestureDetector gesture={swipeGesture}>
+        <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => router.back()}>
+          <Ionicons name="chevron-back" size={28} color={primaryColor} />
+        </TouchableOpacity>
+        <ThemedText type="title" style={styles.headerTitle}>Settings</ThemedText>
+        <View style={styles.headerSpacer} />
+      </View>
 
-        <View style={styles.card}>
-          <ThemedText type="subtitle" style={styles.cardTitle}>GitHub Authentication</ThemedText>
-          {isAuthenticated ? (
-            <View style={styles.cardContent}>
-              <ThemedText>Authenticated as: {username}</ThemedText>
-              {syncRepo && (
-                <ThemedText>Storage: {syncRepo}</ThemedText>
-              )}
-              <TouchableOpacity 
-                style={styles.button} 
-                onPress={handleLogout}>
-                <ThemedText type="link">Sign Out</ThemedText>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={styles.cardContent}>
-              <ThemedText>
-                You are not signed in. Please sign in to use the app.
-              </ThemedText>
-              <TouchableOpacity
-                style={styles.button}
-                onPress={handleLogin}>
-                <ThemedText type="link">Sign In to GitHub</ThemedText>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <ThemedText type="subtitle" style={styles.cardTitle}>Customers</ThemedText>
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={handleAddCustomer}>
-              <ThemedText style={styles.addButtonText}>+ Add</ThemedText>
-            </TouchableOpacity>
-          </View>
-          
-          <View style={styles.cardContent}>
-            {customers.length === 0 ? (
-              <ThemedText style={styles.emptyText}>No customers yet</ThemedText>
+      <ScrollView style={styles.scrollContent}>
+        <View style={styles.content}>
+          <View style={styles.card}>
+            <ThemedText type="subtitle" style={styles.cardTitle}>GitHub Authentication</ThemedText>
+            {isAuthenticated ? (
+              <View style={styles.cardContent}>
+                <ThemedText>Authenticated as: {username}</ThemedText>
+                {syncRepo && (
+                  <ThemedText>Storage: {syncRepo}</ThemedText>
+                )}
+                <TouchableOpacity 
+                  style={styles.button} 
+                  onPress={handleLogout}>
+                  <ThemedText type="link">Sign Out</ThemedText>
+                </TouchableOpacity>
+              </View>
             ) : (
-              customers.map((customer) => (
-                <View key={customer.id} style={styles.customerItem}>
-                  <View style={styles.customerInfo}>
-                    <ThemedText style={styles.customerName}>{customer.name}</ThemedText>
-                  </View>
-                  <View style={styles.customerActions}>
-                    <TouchableOpacity
-                      style={styles.actionButton}
-                      onPress={() => handleEditCustomer(customer)}>
-                      <ThemedText style={styles.actionButtonText}>Edit</ThemedText>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.actionButton, styles.archiveButton]}
-                      onPress={() => handleArchiveCustomer(customer)}>
-                      <ThemedText style={styles.actionButtonText}>Archive</ThemedText>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))
+              <View style={styles.cardContent}>
+                <ThemedText>
+                  You are not signed in. Please sign in to use the app.
+                </ThemedText>
+                <TouchableOpacity
+                  style={styles.button}
+                  onPress={handleLogin}>
+                  <ThemedText type="link">Sign In to GitHub</ThemedText>
+                </TouchableOpacity>
+              </View>
             )}
           </View>
-        </View>
 
-        <View style={styles.card}>
-          <ThemedText type="subtitle" style={styles.cardTitle}>Navigation</ThemedText>
-          <View style={styles.cardContent}>
-            <View style={styles.settingSection}>
-              <View style={styles.settingInfo}>
-                <ThemedText style={styles.settingLabel}>Default Startup Tab</ThemedText>
-                <ThemedText style={styles.settingDescription}>
-                  Choose which tab to show when opening the app
-                </ThemedText>
-              </View>
-              <View style={styles.segmentedControl}>
-                <TouchableOpacity
-                  style={[
-                    styles.segmentButton,
-                    styles.segmentButtonLeft,
-                    defaultTab === 'todos' && styles.segmentButtonActive
-                  ]}
-                  onPress={() => handleDefaultTabChange('todos')}>
-                  <ThemedText style={[
-                    styles.segmentButtonText,
-                    defaultTab === 'todos' && styles.segmentButtonTextActive
-                  ]}>
-                    Todos
-                  </ThemedText>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.segmentButton,
-                    styles.segmentButtonRight,
-                    defaultTab === 'timer' && styles.segmentButtonActive
-                  ]}
-                  onPress={() => handleDefaultTabChange('timer')}>
-                  <ThemedText style={[
-                    styles.segmentButtonText,
-                    defaultTab === 'timer' && styles.segmentButtonTextActive
-                  ]}>
-                    Timer
-                  </ThemedText>
-                </TouchableOpacity>
-              </View>
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <ThemedText type="subtitle" style={styles.cardTitle}>Customers</ThemedText>
+              <TouchableOpacity
+                style={styles.addButton}
+                onPress={handleAddCustomer}>
+                <ThemedText style={styles.addButtonText}>+ Add</ThemedText>
+              </TouchableOpacity>
             </View>
+            
+            <View style={styles.cardContent}>
+              {customers.length === 0 ? (
+                <ThemedText style={styles.emptyText}>No customers yet</ThemedText>
+              ) : (
+                customers.map((customer) => (
+                  <View key={customer.id} style={styles.customerItem}>
+                    <View style={styles.customerInfo}>
+                      <ThemedText style={styles.customerName}>{customer.name}</ThemedText>
+                    </View>
+                    <View style={styles.customerActions}>
+                      <TouchableOpacity
+                        style={styles.actionButton}
+                        onPress={() => handleEditCustomer(customer)}>
+                        <ThemedText style={styles.actionButtonText}>Edit</ThemedText>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.actionButton, styles.archiveButton]}
+                        onPress={() => handleArchiveCustomer(customer)}>
+                        <ThemedText style={styles.actionButtonText}>Archive</ThemedText>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))
+              )}
+            </View>
+          </View>
 
+          <View style={styles.card}>
+            <ThemedText type="subtitle" style={styles.cardTitle}>Navigation</ThemedText>
+            <View style={styles.cardContent}>
+              <View style={styles.settingSection}>
+                <View style={styles.settingInfo}>
+                  <ThemedText style={styles.settingLabel}>Default Startup Tab</ThemedText>
+                  <ThemedText style={styles.settingDescription}>
+                    Choose which tab to show when opening the app
+                  </ThemedText>
+                </View>
+                <View style={styles.segmentedControl}>
+                  <TouchableOpacity
+                    style={[
+                      styles.segmentButton,
+                      styles.segmentButtonLeft,
+                      defaultTab === 'todos' && styles.segmentButtonActive
+                    ]}
+                    onPress={() => handleDefaultTabChange('todos')}>
+                    <ThemedText style={[
+                      styles.segmentButtonText,
+                      defaultTab === 'todos' && styles.segmentButtonTextActive
+                    ]}>
+                      Todos
+                    </ThemedText>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.segmentButton,
+                      styles.segmentButtonRight,
+                      defaultTab === 'timer' && styles.segmentButtonActive
+                    ]}
+                    onPress={() => handleDefaultTabChange('timer')}>
+                    <ThemedText style={[
+                      styles.segmentButtonText,
+                      defaultTab === 'timer' && styles.segmentButtonTextActive
+                    ]}>
+                      Timer
+                    </ThemedText>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+            </View>
+          </View>
+
+          <View style={styles.card}>
+            <ThemedText type="subtitle" style={styles.cardTitle}>About</ThemedText>
+            <View style={styles.cardContent}>
+              <ThemedText>syss.la v1.0.0</ThemedText>
+              <ThemedText>A developer productivity app</ThemedText>
+            </View>
           </View>
         </View>
-
-        <View style={styles.card}>
-          <ThemedText type="subtitle" style={styles.cardTitle}>About</ThemedText>
-          <View style={styles.cardContent}>
-            <ThemedText>syss.la v1.0.0</ThemedText>
-            <ThemedText>A developer productivity app</ThemedText>
-          </View>
-        </View>
-      </ThemedView>
+      </ScrollView>
 
       {/* Customer Modal */}
       <Modal
@@ -336,12 +364,36 @@ export default function SettingsScreen() {
           </View>
         </View>
       </Modal>
-    </ScrollView>
+    </ThemedView>
+      </GestureDetector>
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 20,
+    paddingBottom: 16,
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    flex: 1,
+    textAlign: 'center',
+  },
+  headerSpacer: {
+    width: 44, // Same width as back button to center the title
+  },
+  scrollContent: {
     flex: 1,
   },
   content: {

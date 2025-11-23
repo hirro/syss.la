@@ -375,7 +375,7 @@ export default function WikiScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.headerButton}
-            onPress={() => router.push('/(tabs)/settings')}>
+            onPress={() => router.push('/settings')}>
             <Ionicons name="settings-outline" size={24} color={primaryColor} />
           </TouchableOpacity>
         </View>

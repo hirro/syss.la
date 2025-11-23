@@ -24,8 +24,6 @@ export default function TabLayout() {
           setHasNavigated(true);
           if (defaultTab === 'timer') {
             router.replace('/(tabs)/timer');
-          } else if (defaultTab === 'settings') {
-            router.replace('/(tabs)/settings');
           }
         } else {
           // Default to todo tab
@@ -77,11 +75,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="settings"
+        name="reports"
         options={{
-          title: 'Settings',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="gearshape.fill" color={color} />,
-          href: null,
+          title: 'Reports',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="chart.bar.fill" color={color} />,
+          href: isAuthenticated ? '/(tabs)/reports' : null,
         }}
       />
     </Tabs>
